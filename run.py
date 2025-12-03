@@ -91,7 +91,6 @@ menu = st.sidebar.radio(
 if menu == "Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi</div>", unsafe_allow_html=True)
 
-    # ✅ AKUN SUDAH DISAMAKAN SESUAI PERMINTAAN
     akun_list = [
         "Kas",
         "Piutang",
@@ -216,17 +215,18 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# EXPORT EXCEL MULTI SHEET (AMAN OPENPYXL)
+# EXPORT EXCEL MULTI SHEET (FULL OPENPYXL - TANPA XLSXWRITER)
 # ============================
 def export_excel_multi(df):
     output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='openpyxl')
+    writer = pd.ExcelWriter(output, engine="openpyxl")
 
+    # Sheet 1 - Jurnal Umum
     df.to_excel(writer, index=False, sheet_name="Jurnal Umum")
 
+    # Sheet 2 - Buku Besar
     buku = buku_besar(df)
     start_row = 0
-
     for akun, data in buku.items():
         data.to_excel(
             writer,
@@ -236,6 +236,7 @@ def export_excel_multi(df):
         )
         start_row += len(data) + 3
 
+    # Sheet 3 - Neraca Saldo
     neraca = neraca_saldo(df)
     neraca.to_excel(writer, sheet_name="Neraca Saldo")
 
