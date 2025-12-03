@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from datetime import datetime
+import io
 
 # ============================
 # CONFIG TAMPAK APLIKASI
@@ -90,7 +91,17 @@ menu = st.sidebar.radio(
 if menu == "Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi</div>", unsafe_allow_html=True)
 
-    akun_list = ["Kas", "Piutang", "Utang", "Modal", "Pendapatan", "Beban"]
+    # ✅ AKUN SUDAH DISAMAKAN SESUAI PERMINTAAN
+    akun_list = [
+        "Kas",
+        "Piutang",
+        "Utang",
+        "Modal",
+        "Pendapatan Jasa",
+        "Beban Gaji",
+        "Beban Listrik",
+        "Beban Sewa"
+    ]
 
     tanggal = st.date_input("Tanggal", datetime.now())
     akun = st.selectbox("Akun", akun_list)
@@ -98,7 +109,6 @@ if menu == "Input Transaksi":
 
     col1, col2 = st.columns(2)
 
-    # Tidak desimal → integer
     with col1:
         debit = st.number_input("Debit (Rp)", min_value=0, step=1000, format="%d")
     with col2:
@@ -113,7 +123,6 @@ if menu == "Input Transaksi":
     if len(st.session_state.transaksi) > 0:
         df = pd.DataFrame(st.session_state.transaksi)
 
-        # Format Rp
         df_display = df.copy()
         df_display["Debit"] = df_display["Debit"].apply(to_rp)
         df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
@@ -206,17 +215,15 @@ elif menu == "Grafik":
 
         st.altair_chart(chart, use_container_width=True)
 
-# ========= EXPORT EXCEL MULTI SHEET ==========
-import io
-
+# ============================
+# EXPORT EXCEL MULTI SHEET (AMAN OPENPYXL)
+# ============================
 def export_excel_multi(df):
     output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    writer = pd.ExcelWriter(output, engine='openpyxl')
 
-    # ===== 1. JURNAL UMUM =====
     df.to_excel(writer, index=False, sheet_name="Jurnal Umum")
 
-    # ===== 2. BUKU BESAR =====
     buku = buku_besar(df)
     start_row = 0
 
@@ -227,23 +234,17 @@ def export_excel_multi(df):
             startrow=start_row,
             index=False
         )
-
-        # Judul Akun
-        worksheet = writer.book.worksheets()[1]
-        worksheet.write(start_row, 0, f"Akun: {akun}")
-
         start_row += len(data) + 3
 
-    # ===== 3. NERACA SALDO =====
     neraca = neraca_saldo(df)
     neraca.to_excel(writer, sheet_name="Neraca Saldo")
 
     writer.close()
     return output.getvalue()
 
-
-
-# ========= TOMBOL EXPORT =========
+# ============================
+# TOMBOL EXPORT
+# ============================
 st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
 
 if len(st.session_state.transaksi) == 0:
