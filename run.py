@@ -206,15 +206,41 @@ elif menu == "Grafik":
 
         st.altair_chart(chart, use_container_width=True)
 
-# ========= EXPORT EXCEL ==========
+# ========= EXPORT EXCEL MULTI SHEET ==========
 import io
 
-def export_excel(df):
+def export_excel_multi(df):
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, index=False, sheet_name="Laporan_Akuntansi")
+
+    # ===== 1. JURNAL UMUM =====
+    df.to_excel(writer, index=False, sheet_name="Jurnal Umum")
+
+    # ===== 2. BUKU BESAR =====
+    buku = buku_besar(df)
+    start_row = 0
+
+    for akun, data in buku.items():
+        data.to_excel(
+            writer,
+            sheet_name="Buku Besar",
+            startrow=start_row,
+            index=False
+        )
+
+        # Judul Akun
+        worksheet = writer.book.worksheets()[1]
+        worksheet.write(start_row, 0, f"Akun: {akun}")
+
+        start_row += len(data) + 3
+
+    # ===== 3. NERACA SALDO =====
+    neraca = neraca_saldo(df)
+    neraca.to_excel(writer, sheet_name="Neraca Saldo")
+
     writer.close()
     return output.getvalue()
+
 
 
 # ========= TOMBOL EXPORT =========
@@ -224,11 +250,11 @@ if len(st.session_state.transaksi) == 0:
     st.info("Belum ada transaksi untuk diekspor.")
 else:
     df = pd.DataFrame(st.session_state.transaksi)
-    excel_file = export_excel(df)
+    excel_file = export_excel_multi(df)
 
     st.download_button(
-        label="📥 Export ke Excel",
+        label="📥 Export ke Excel (Lengkap)",
         data=excel_file,
-        file_name="laporan_akuntansi.xlsx",
+        file_name="laporan_akuntansi_lengkap.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
