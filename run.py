@@ -287,7 +287,7 @@ if menu == "Input Transaksi":
 # 2. JURNAL UMUM
 # ============================
 elif menu == "Jurnal Umum":
-    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>📘 Laporan Jurnal Umum</div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
@@ -318,7 +318,7 @@ elif menu == "Jurnal Umum":
 # 3. BUKU BESAR
 # ============================
 elif menu == "Buku Besar":
-    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>📗 Laporan Buku Besar</div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
@@ -356,7 +356,7 @@ elif menu == "Buku Besar":
 # 4. NERACA SALDO
 # ============================
 elif menu == "Neraca Saldo":
-    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>📙 Laporan Neraca Saldo</div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
