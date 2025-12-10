@@ -3,7 +3,10 @@ import pandas as pd
 import altair as alt
 from datetime import datetime
 import io
-import openpyxl
+import calendar
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Font, Alignment
 
 # ============================
 # CONFIG TAMPAK APLIKASI
@@ -65,12 +68,10 @@ def hapus_transaksi(idx):
 def buku_besar(df):
     akun_list = df["Akun"].unique()
     buku_besar_data = {}
-
     for akun in akun_list:
         df_akun = df[df["Akun"] == akun].copy()
         df_akun["Saldo"] = df_akun["Debit"].cumsum() - df_akun["Kredit"].cumsum()
         buku_besar_data[akun] = df_akun
-
     return buku_besar_data
 
 def neraca_saldo(df):
@@ -93,14 +94,8 @@ if menu == "Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi</div>", unsafe_allow_html=True)
 
     akun_list = [
-        "Kas",
-        "Piutang",
-        "Utang",
-        "Modal",
-        "Pendapatan Jasa",
-        "Beban Gaji",
-        "Beban Listrik",
-        "Beban Sewa"
+        "Kas", "Piutang", "Utang", "Modal", "Pendapatan Jasa",
+        "Beban Gaji", "Beban Listrik", "Beban Sewa"
     ]
 
     tanggal = st.date_input("Tanggal", datetime.now())
@@ -138,6 +133,7 @@ if menu == "Input Transaksi":
 # ============================
 elif menu == "Jurnal Umum":
     st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
     else:
@@ -152,11 +148,13 @@ elif menu == "Jurnal Umum":
 # ============================
 elif menu == "Buku Besar":
     st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         buku = buku_besar(df)
+
         for akun, data in buku.items():
             st.write(f"### ▶ {akun}")
             df2 = data.copy()
@@ -170,6 +168,7 @@ elif menu == "Buku Besar":
 # ============================
 elif menu == "Neraca Saldo":
     st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
     else:
@@ -186,6 +185,7 @@ elif menu == "Neraca Saldo":
 # ============================
 elif menu == "Grafik":
     st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
     else:
@@ -201,79 +201,87 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# 6. EXPORT EXCEL MULTI BULAN
+# 6. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
+
+    def export_excel_multi(df):
+        output = io.BytesIO()
+        wb = Workbook()
+
+        # --- SHEET 1: JURNAL UMUM (gabung per bulan)
+        ws1 = wb.active
+        ws1.title = "Jurnal Umum"
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+        df_sorted = df.sort_values("Tanggal")
+
+        current_row = 1
+        for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+            nama_bulan = calendar.month_name[bulan].upper()
+            ws1.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+            cell = ws1.cell(row=current_row, column=1, value=f"=== {nama_bulan} {tahun} ===")
+            cell.font = Font(bold=True, size=12)
+            current_row += 1
+
+            headers = list(grup.columns.drop(["Bulan", "Tahun"]))
+            for col_num, header in enumerate(headers, start=1):
+                ws1.cell(row=current_row, column=col_num, value=header).font = Font(bold=True)
+            current_row += 1
+
+            for r in dataframe_to_rows(grup.drop(["Bulan", "Tahun"], axis=1), index=False, header=False):
+                for c_idx, val in enumerate(r, start=1):
+                    cell = ws1.cell(row=current_row, column=c_idx, value=val)
+                    if c_idx in [4, 5]:
+                        if isinstance(val, (int, float)):
+                            cell.number_format = '"Rp"#,##0'
+                    cell.alignment = Alignment(horizontal="left")
+                current_row += 1
+            current_row += 2
+
+        # --- SHEET 2: BUKU BESAR
+        ws2 = wb.create_sheet("Buku Besar")
+        buku = buku_besar(df)
+        row_buku = 1
+        for akun, data in buku.items():
+            ws2.merge_cells(start_row=row_buku, start_column=1, end_row=row_buku, end_column=5)
+            ws2.cell(row=row_buku, column=1, value=f"== {akun.upper()} ==")
+            ws2.cell(row=row_buku, column=1).font = Font(bold=True)
+            row_buku += 1
+
+            for col_num, header in enumerate(data.columns, start=1):
+                ws2.cell(row=row_buku, column=col_num, value=header).font = Font(bold=True)
+            row_buku += 1
+
+            for r in dataframe_to_rows(data, index=False, header=False):
+                for c_idx, val in enumerate(r, start=1):
+                    cell = ws2.cell(row=row_buku, column=c_idx, value=val)
+                    if c_idx in [4, 5, 6] and isinstance(val, (int, float)):
+                        cell.number_format = '"Rp"#,##0'
+                row_buku += 1
+            row_buku += 2
+
+        # --- SHEET 3: NERACA SALDO
+        ws3 = wb.create_sheet("Neraca Saldo")
+        neraca = neraca_saldo(df).reset_index()
+        for r_idx, r in enumerate(dataframe_to_rows(neraca, index=False, header=True), start=1):
+            for c_idx, val in enumerate(r, start=1):
+                cell = ws3.cell(row=r_idx, column=c_idx, value=val)
+                if r_idx == 1:
+                    cell.font = Font(bold=True)
+                elif c_idx in [2, 3, 4] and isinstance(val, (int, float)):
+                    cell.number_format = '"Rp"#,##0'
+
+        wb.save(output)
+        output.seek(0)
+        return output.getvalue()
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
-
-        def export_excel_multi(df):
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                kelompok = df.groupby([df["Tanggal"].dt.year, df["Tanggal"].dt.month])
-
-                # --- Sheet 1: Jurnal Umum ---
-                writer.book.create_sheet("Jurnal Umum")
-                ws_jurnal = writer.book["Jurnal Umum"]
-                row = 1
-                for (tahun, bulan), group in kelompok:
-                    nama_bulan = group["Tanggal"].dt.month_name().iloc[0].upper()
-                    ws_jurnal.cell(row=row, column=1, value=f"=== {nama_bulan} {tahun} ===")
-                    row += 2
-                    group.to_excel(writer, sheet_name="Jurnal Umum", startrow=row, index=False)
-                    total_debit = int(group["Debit"].sum())
-                    total_kredit = int(group["Kredit"].sum())
-                    total_row = row + len(group) + 1
-                    ws_jurnal.cell(row=total_row, column=1, value="TOTAL")
-                    ws_jurnal.cell(row=total_row, column=2, value=total_debit)
-                    ws_jurnal.cell(row=total_row, column=3, value=total_kredit)
-                    row = total_row + 3
-
-                # --- Sheet 2: Buku Besar ---
-                writer.book.create_sheet("Buku Besar")
-                ws_bb = writer.book["Buku Besar"]
-                row = 1
-                for (tahun, bulan), group in kelompok:
-                    nama_bulan = group["Tanggal"].dt.month_name().iloc[0].upper()
-                    ws_bb.cell(row=row, column=1, value=f"=== {nama_bulan} {tahun} ===")
-                    row += 2
-                    buku = buku_besar(group)
-                    for akun, data in buku.items():
-                        ws_bb.cell(row=row, column=1, value=f">> Akun: {akun}")
-                        row += 1
-                        data.to_excel(writer, sheet_name="Buku Besar", startrow=row, index=False)
-                        row += len(data) + 3
-                    row += 1
-
-                # --- Sheet 3: Neraca Saldo ---
-                writer.book.create_sheet("Neraca Saldo")
-                ws_ns = writer.book["Neraca Saldo"]
-                row = 1
-                for (tahun, bulan), group in kelompok:
-                    nama_bulan = group["Tanggal"].dt.month_name().iloc[0].upper()
-                    ws_ns.cell(row=row, column=1, value=f"=== {nama_bulan} {tahun} ===")
-                    row += 2
-                    neraca = neraca_saldo(group)
-                    neraca.to_excel(writer, sheet_name="Neraca Saldo", startrow=row)
-                    total_debit = int(neraca["Debit"].sum())
-                    total_kredit = int(neraca["Kredit"].sum())
-                    total_row = row + len(neraca) + 1
-                    ws_ns.cell(row=total_row, column=1, value="TOTAL")
-                    ws_ns.cell(row=total_row, column=2, value=total_debit)
-                    ws_ns.cell(row=total_row, column=3, value=total_kredit)
-                    row = total_row + 3
-
-                # hapus sheet default
-                if "Sheet" in writer.book.sheetnames:
-                    del writer.book["Sheet"]
-
-            return output.getvalue()
-
         excel_file = export_excel_multi(df)
         st.download_button(
             label="📥 Export ke Excel (Lengkap)",
