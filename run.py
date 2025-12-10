@@ -215,102 +215,54 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# EXPORT EXCEL MULTI SHEET (PROFESIONAL FORMAT)
+# EXPORT EXCEL MULTI SHEET (FULL OPENPYXL - TANPA XLSXWRITER)
 # ============================
-def auto_width(ws):
-    for col in ws.columns:
-        max_len = 0
-        col_letter = get_column_letter(col[0].column)
-        for cell in col:
-            try:
-                if cell.value:
-                    max_len = max(max_len, len(str(cell.value)))
-            except:
-                pass
-        ws.column_dimensions[col_letter].width = max_len + 3
-
-def style_sheet(ws):
-    thin = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin")
-    )
-
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.border = thin
-            if isinstance(cell.value, (int, float)):
-                cell.number_format = '#,##0'
-
-    # Header format
-    header = ws[1]
-    for cell in header:
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
-
 def export_excel_multi(df):
-    wb = Workbook()
-
-    # =========================
-    # Sheet 1 – Jurnal Umum
-    # =========================
-    ws1 = wb.active
-    ws1.title = "Jurnal Umum"
-
-    for r in dataframe_to_rows(df, index=False, header=True):
-        ws1.append(r)
-
-    style_sheet(ws1)
-    auto_width(ws1)
-
-    # =========================
-    # Sheet 2 – Buku Besar per Akun
-    # =========================
-    buku = buku_besar(df)
-
-    for akun, data in buku.items():
-        ws = wb.create_sheet(title=f"BB - {akun[:25]}")
-
-        for r in dataframe_to_rows(data, index=False, header=True):
-            ws.append(r)
-
-        style_sheet(ws)
-        auto_width(ws)
-
-    # =========================
-    # Sheet 3 – Neraca Saldo
-    # =========================
-    ner = neraca_saldo(df)
-    ws3 = wb.create_sheet(title="Neraca Saldo")
-
-    for r in dataframe_to_rows(ner, index=False, header=True):
-        ws3.append(r)
-
-    style_sheet(ws3)
-    auto_width(ws3)
-
-    # Output ke Bytes
     output = io.BytesIO()
-    wb.save(output)
+    writer = pd.ExcelWriter(output, engine="openpyxl")
+
+    # Sheet 1 - Jurnal Umum
+    df.to_excel(writer, index=False, sheet_name="Jurnal Umum")
+
+    # Sheet 2 - Buku Besar
+    buku = buku_besar(df)
+    start_row = 0
+    for akun, data in buku.items():
+        data.to_excel(
+            writer,
+            sheet_name="Buku Besar",
+            startrow=start_row,
+            index=False
+        )
+        start_row += len(data) + 3
+
+    # Sheet 3 - Neraca Saldo
+    neraca = neraca_saldo(df)
+    neraca.to_excel(writer, sheet_name="Neraca Saldo")
+
+    writer.close()
     return output.getvalue()
 
-
 # ============================
-# MENU EXPORT EXCEL
+# TOMBOL EXPORT
 # ============================
-elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
 
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada transaksi untuk diekspor.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        excel_file = export_excel_multi(df)
+if len(st.session_state.transaksi) == 0:
+    st.info("Belum ada transaksi untuk diekspor.")
+else:
+    df = pd.DataFrame(st.session_state.transaksi)
+    excel_file = export_excel_multi(df)
 
-        st.download_button(
-            label="📥 Export ke Excel (Lengkap & Rapi)",
-            data=excel_file,
-            file_name="laporan_akuntansi_lengkap.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+    st.download_button(
+        label="📥 Export ke Excel (Lengkap)",
+        data=excel_file,
+        file_name="laporan_akuntansi_lengkap.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+tolong ubah tampilannya menjadi lebih bagus dan tolong jika sudah di upload ke excel tolongt pisahkah lagi sesuai bulan dan tolong langsung rapikan juga laporan ecxelnya
+
+
+tolong untuk transaksi yang beda bulan di bedakan kolomnya dan sheet yang di buat di excel hanya tiga yaitu jurnal umum, buku besar dan neraca saldo.
