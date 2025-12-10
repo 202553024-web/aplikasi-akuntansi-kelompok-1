@@ -201,7 +201,32 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# 6. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
+# 6. EXPORT EXCEL
+# ============================
+elif menu == "Export Excel":
+    st.markdown("<div class='subtitle'>📤 Export ke Excel</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi untuk diekspor.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+
+        try:
+            excel_file = export_excel_multi(df)
+
+            st.download_button(
+                label="📥 Download Excel (Lengkap)",
+                data=excel_file,
+                file_name="laporan_akuntansi_lengkap.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat export: {e}")
+
+
+# ============================
+# 7. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
 # ============================
 def export_excel_multi(df):
     output = io.BytesIO()
@@ -325,4 +350,5 @@ def export_excel_multi(df):
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
