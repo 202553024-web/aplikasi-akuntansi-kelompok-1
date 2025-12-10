@@ -225,7 +225,7 @@ def export_excel_multi(df):
     # =====================================================
     #  SHEET 1: JURNAL UMUM
     # =====================================================
- elif menu == "Jurnal Umum":
+elif menu == "Jurnal Umum":
     st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
@@ -262,7 +262,6 @@ def export_excel_multi(df):
 
             st.table(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]])
             st.write("---")
-
     # =====================================================
     #  SHEET 2: BUKU BESAR
     # =====================================================
@@ -308,7 +307,6 @@ elif menu == "Buku Besar":
 
                 st.table(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]])
                 st.write("---")
-
     # =====================================================
     #  SHEET 3: NERACA SALDO
     # =====================================================
@@ -349,10 +347,10 @@ elif menu == "Neraca Saldo":
             df_show["Debit"] = df_show["Debit"].apply(to_rp)
             df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
             df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
-
+            
             st.table(df_show)
             st.write("---")
-
+            
     wb.save(output)
     output.seek(0)
     return output.getvalue()
@@ -373,8 +371,3 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-
-
-
-
