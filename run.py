@@ -293,10 +293,26 @@ elif menu == "Jurnal Umum":
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        df2 = df.copy()
-        df2["Debit"] = df2["Debit"].apply(to_rp)
-        df2["Kredit"] = df2["Kredit"].apply(to_rp)
-        st.dataframe(df2, use_container_width=True)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            # Header Bulan
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            df_show = grup.copy()
+            df_show["Debit"] = df_show["Debit"].apply(to_rp)
+            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+
+            st.dataframe(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], use_container_width=True)
 
 # ============================
 # 3. BUKU BESAR
@@ -308,14 +324,33 @@ elif menu == "Buku Besar":
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        buku = buku_besar(df)
-        for akun, data in buku.items():
-            st.write(f"### ▶ {akun}")
-            df2 = data.copy()
-            df2["Debit"] = df2["Debit"].apply(to_rp)
-            df2["Kredit"] = df2["Kredit"].apply(to_rp)
-            df2["Saldo"] = df2["Saldo"].apply(to_rp)
-            st.dataframe(df2, use_container_width=True)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            # Akun per bulan
+            buku = buku_besar(grup)
+            for akun, data in buku.items():
+                st.markdown(f"##### ▶ {akun}")
+
+                df_show = data.copy()
+                df_show["Debit"] = df_show["Debit"].apply(to_rp)
+                df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+                df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
+
+                st.dataframe(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]], use_container_width=True)
+                st.write("---")
 
 # ============================
 # 4. NERACA SALDO
@@ -327,12 +362,31 @@ elif menu == "Neraca Saldo":
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        neraca = neraca_saldo(df)
-        df2 = neraca.copy()
-        df2["Debit"] = df2["Debit"].apply(to_rp)
-        df2["Kredit"] = df2["Kredit"].apply(to_rp)
-        df2["Saldo"] = df2["Saldo"].apply(to_rp)
-        st.dataframe(df2, use_container_width=True)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+            
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            neraca = grup.groupby("Akun")[["Debit", "Kredit"]].sum()
+            neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
+
+            df_show = neraca.copy()
+            df_show["Debit"] = df_show["Debit"].apply(to_rp)
+            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+            df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
+
+            st.dataframe(df_show, use_container_width=True)
+            st.write("---")
 
 # ============================
 # 5. GRAFIK
@@ -371,4 +425,5 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
