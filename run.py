@@ -225,90 +225,135 @@ def export_excel_multi(df):
     # =====================================================
     #  SHEET 1: JURNAL UMUM
     # =====================================================
-    ws1 = wb.active
-    ws1.title = "Jurnal Umum"
+elif menu == "Jurnal Umum":
+    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
 
-    ws1.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
-    header_cell = ws1.cell(row=1, column=1, value=periode_text)
-    header_cell.font = Font(bold=True, size=13)
-    header_cell.alignment = Alignment(horizontal="center")
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
 
-    current_row = 3
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
 
-    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
-        nama_bulan = calendar.month_name[bulan].upper()
+            # Header Tahun (center)
+            if tahun != tahun_sekarang:
+                st.markdown(
+                    f"<h3 style='text-align:center;'>📅 Tahun {tahun}</h3>",
+                    unsafe_allow_html=True
+                )
+                st.write("")  # pemisah
+                tahun_sekarang = tahun
 
-        ws1.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=6)
-        cell = ws1.cell(row=current_row, column=1, value=f"=== {nama_bulan} {tahun} ===")
-        cell.font = Font(bold=True, size=12)
-        current_row += 1
+            # Header Bulan (center)
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(
+                f"<h4 style='text-align:center;'>📌 Bulan {nama_bulan}</h4>",
+                unsafe_allow_html=True
+            )
+            st.write("")
 
-        headers = list(grup.columns.drop(["Bulan", "Tahun"]))
-        for col_num, header in enumerate(headers, start=1):
-            ws1.cell(row=current_row, column=col_num, value=header).font = Font(bold=True)
-        current_row += 1
+            df_show = grup.copy()
+            df_show["Debit"] = df_show["Debit"].apply(to_rp)
+            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
 
-        for r in dataframe_to_rows(grup.drop(["Bulan", "Tahun"], axis=1), index=False, header=False):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws1.cell(row=current_row, column=c_idx, value=val)
-                if c_idx in [4, 5] and isinstance(val, (int, float)):
-                    cell.number_format = '"Rp"#,##0'
-            current_row += 1
+            st.table(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]])
+            st.write("---")
 
-        current_row += 2
 
     # =====================================================
     #  SHEET 2: BUKU BESAR
     # =====================================================
-    ws2 = wb.create_sheet("Buku Besar")
+elif menu == "Buku Besar":
+    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
 
-    ws2.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
-    h2 = ws2.cell(row=1, column=1, value=periode_text)
-    h2.font = Font(bold=True, size=13)
-    h2.alignment = Alignment(horizontal="center")
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
 
-    row_buku = 3
-    buku = buku_besar(df)
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
 
-    for akun, data in buku.items():
-        ws2.merge_cells(start_row=row_buku, start_column=1, end_row=row_buku, end_column=6)
-        ws2.cell(row=row_buku, column=1, value=f"== {akun.upper()} ==").font = Font(bold=True, size=12)
-        row_buku += 1
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(
+                    f"<h3 style='text-align:center;'>📅 Tahun {tahun}</h3>",
+                    unsafe_allow_html=True
+                )
+                st.write("")
+                tahun_sekarang = tahun
 
-        for col_num, header in enumerate(data.columns, start=1):
-            ws2.cell(row=row_buku, column=col_num, value=header).font = Font(bold=True)
-        row_buku += 1
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(
+                f"<h4 style='text-align:center;'>📌 Bulan {nama_bulan}</h4>",
+                unsafe_allow_html=True
+            )
+            st.write("")
 
-        for r in dataframe_to_rows(data, index=False, header=False):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws2.cell(row=row_buku, column=c_idx, value=val)
-                if c_idx in [4, 5, 6] and isinstance(val, (int, float)):
-                    cell.number_format = '"Rp"#,##0'
-            row_buku += 1
+            # Akun per bulan
+            buku = buku_besar(grup)
+            for akun, data in buku.items():
+                st.markdown(f"#### ▶ {akun}")
 
-        row_buku += 2
+                df_show = data.copy()
+                df_show["Debit"] = df_show["Debit"].apply(to_rp)
+                df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+                df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
+
+                st.table(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]])
+                st.write("---")
+
 
     # =====================================================
     #  SHEET 3: NERACA SALDO
     # =====================================================
-    ws3 = wb.create_sheet("Neraca Saldo")
+elif menu == "Neraca Saldo":
+    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
 
-    ws3.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
-    h3 = ws3.cell(row=1, column=1, value=periode_text)
-    h3.font = Font(bold=True, size=13)
-    h3.alignment = Alignment(horizontal="center")
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
 
-    neraca = neraca_saldo(df).reset_index()
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
 
-    row = 3
-    for r in dataframe_to_rows(neraca, index=False, header=True):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws3.cell(row=row, column=c_idx, value=val)
-            if row == 3:
-                cell.font = Font(bold=True)
-            elif c_idx in [2, 3, 4] and isinstance(val, (int, float)):
-                cell.number_format = '"Rp"#,##0'
-        row += 1
+            # Header Tahun Center
+            if tahun != tahun_sekarang:
+                st.markdown(
+                    f"<h3 style='text-align:center;'>📅 Tahun {tahun}</h3>",
+                    unsafe_allow_html=True
+                )
+                st.write("")
+                tahun_sekarang = tahun
+
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(
+                f"<h4 style='text-align:center;'>📌 Bulan {nama_bulan}</h4>",
+                unsafe_allow_html=True
+            )
+            st.write("")
+
+            neraca = grup.groupby("Akun")[["Debit", "Kredit"]].sum()
+            neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
+
+            df_show = neraca.copy()
+            df_show["Debit"] = df_show["Debit"].apply(to_rp)
+            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+            df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
+
+            st.table(df_show)
+            st.write("---")
 
     wb.save(output)
     output.seek(0)
@@ -330,6 +375,7 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
 
