@@ -129,79 +129,7 @@ if menu == "Input Transaksi":
         st.info("Belum ada transaksi.")
 
 # ============================
-# 2. JURNAL UMUM
-# ============================
-elif menu == "Jurnal Umum":
-    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        df2 = df.copy()
-        df2["Debit"] = df2["Debit"].apply(to_rp)
-        df2["Kredit"] = df2["Kredit"].apply(to_rp)
-        st.dataframe(df2, use_container_width=True)
-
-# ============================
-# 3. BUKU BESAR
-# ============================
-elif menu == "Buku Besar":
-    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        buku = buku_besar(df)
-
-        for akun, data in buku.items():
-            st.write(f"### ▶ {akun}")
-            df2 = data.copy()
-            df2["Debit"] = df2["Debit"].apply(to_rp)
-            df2["Kredit"] = df2["Kredit"].apply(to_rp)
-            df2["Saldo"] = df2["Saldo"].apply(to_rp)
-            st.dataframe(df2, use_container_width=True)
-
-# ============================
-# 4. NERACA SALDO
-# ============================
-elif menu == "Neraca Saldo":
-    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        neraca = neraca_saldo(df)
-        df2 = neraca.copy()
-        df2["Debit"] = df2["Debit"].apply(to_rp)
-        df2["Kredit"] = df2["Kredit"].apply(to_rp)
-        df2["Saldo"] = df2["Saldo"].apply(to_rp)
-        st.dataframe(df2, use_container_width=True)
-
-# ============================
-# 5. GRAFIK
-# ============================
-elif menu == "Grafik":
-    st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        chart = alt.Chart(df).mark_bar().encode(
-            x="Akun",
-            y="Debit",
-            color="Akun"
-        ).properties(
-            title="Grafik Jumlah Debit per Akun",
-            width=700
-        )
-        st.altair_chart(chart, use_container_width=True)
-
-# ============================
-# 6. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
+# 6. EXPORT EXCEL
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
@@ -210,9 +138,9 @@ elif menu == "Export Excel":
         output = io.BytesIO()
         wb = Workbook()
 
-        # --- SHEET 1: JURNAL UMUM (gabung per bulan)
+        # --- SHEET 1: LAPORAN TRANSAKSI DENGAN PEMBATAS BULAN
         ws1 = wb.active
-        ws1.title = "Jurnal Umum"
+        ws1.title = "Laporan Transaksi"
         df["Tanggal"] = pd.to_datetime(df["Tanggal"])
         df["Bulan"] = df["Tanggal"].dt.month
         df["Tahun"] = df["Tanggal"].dt.year
@@ -222,7 +150,7 @@ elif menu == "Export Excel":
         for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
             nama_bulan = calendar.month_name[bulan].upper()
             ws1.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-            cell = ws1.cell(row=current_row, column=1, value=f"=== {nama_bulan} {tahun} ===")
+            cell = ws1.cell(row=current_row, column=1, value=f"=== LAPORAN BULAN {nama_bulan} {tahun} ===")
             cell.font = Font(bold=True, size=12)
             current_row += 1
 
@@ -242,32 +170,21 @@ elif menu == "Export Excel":
             current_row += 2
 
         # --- SHEET 2: BUKU BESAR
-        ws2 = wb.create_sheet("Buku Besar")
-        buku = buku_besar(df)
-        row_buku = 1
-        for akun, data in buku.items():
-            ws2.merge_cells(start_row=row_buku, start_column=1, end_row=row_buku, end_column=5)
-            ws2.cell(row=row_buku, column=1, value=f"== {akun.upper()} ==")
-            ws2.cell(row=row_buku, column=1).font = Font(bold=True)
-            row_buku += 1
-
-            for col_num, header in enumerate(data.columns, start=1):
-                ws2.cell(row=row_buku, column=col_num, value=header).font = Font(bold=True)
-            row_buku += 1
-
-            for r in dataframe_to_rows(data, index=False, header=False):
-                for c_idx, val in enumerate(r, start=1):
-                    cell = ws2.cell(row=row_buku, column=c_idx, value=val)
-                    if c_idx in [4, 5, 6] and isinstance(val, (int, float)):
+        for akun, data in buku_besar(df).items():
+            ws_buku = wb.create_sheet(f"Buku Besar - {akun}")
+            for r_idx, row in enumerate(dataframe_to_rows(data, index=False, header=True), start=1):
+                for c_idx, val in enumerate(row, start=1):
+                    cell = ws_buku.cell(row=r_idx, column=c_idx, value=val)
+                    if r_idx == 1:
+                        cell.font = Font(bold=True)
+                    elif c_idx in [4, 5, 6] and isinstance(val, (int, float)):
                         cell.number_format = '"Rp"#,##0'
-                row_buku += 1
-            row_buku += 2
 
         # --- SHEET 3: NERACA SALDO
         ws3 = wb.create_sheet("Neraca Saldo")
         neraca = neraca_saldo(df).reset_index()
-        for r_idx, r in enumerate(dataframe_to_rows(neraca, index=False, header=True), start=1):
-            for c_idx, val in enumerate(r, start=1):
+        for r_idx, row in enumerate(dataframe_to_rows(neraca, index=False, header=True), start=1):
+            for c_idx, val in enumerate(row, start=1):
                 cell = ws3.cell(row=r_idx, column=c_idx, value=val)
                 if r_idx == 1:
                     cell.font = Font(bold=True)
