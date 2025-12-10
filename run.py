@@ -215,30 +215,90 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# EXPORT EXCEL MULTI SHEET (FULL OPENPYXL - TANPA XLSXWRITER)
+# EXPORT EXCEL MULTI-BULAN
 # ============================
 def export_excel_multi(df):
+    # pastikan kolom tanggal berupa datetime
+    df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine="openpyxl")
 
-    # Sheet 1 - Jurnal Umum
-    df.to_excel(writer, index=False, sheet_name="Jurnal Umum")
+    # =======================================================
+    # 1. SHEET JURNAL UMUM — DIPISAH BERDASARKAN BULAN/TAHUN
+    # =======================================================
+    ws_jurnal = writer.book.create_sheet("Jurnal Umum")
 
-    # Sheet 2 - Buku Besar
-    buku = buku_besar(df)
-    start_row = 0
-    for akun, data in buku.items():
-        data.to_excel(
+    kelompok = df.groupby([df["Tanggal"].dt.year, df["Tanggal"].dt.month])
+    row = 1
+
+    for (tahun, bulan), group in kelompok:
+        nama_bulan = group["Tanggal"].dt.month_name().iloc[0]
+
+        # Header bulan
+        ws_jurnal.cell(row=row, column=1, value=f"=== {nama_bulan.upper()} {tahun} ===")
+        row += 2
+
+        # Data jurnal
+        group_sorted = group.sort_values("Tanggal")
+        group_sorted.to_excel(
             writer,
-            sheet_name="Buku Besar",
-            startrow=start_row,
+            sheet_name="Jurnal Umum",
+            startrow=row,
             index=False
         )
-        start_row += len(data) + 3
+        row += len(group_sorted) + 3
 
-    # Sheet 3 - Neraca Saldo
-    neraca = neraca_saldo(df)
-    neraca.to_excel(writer, sheet_name="Neraca Saldo")
+    # Hapus sheet default jika ada
+    if "Sheet1" in writer.book.sheetnames:
+        writer.book.remove(writer.book["Sheet1"])
+
+    # =======================================================
+    # 2. SHEET BUKU BESAR — DIPISAH PER BULAN DAN PER AKUN
+    # =======================================================
+    ws_bb = writer.book.create_sheet("Buku Besar")
+    row = 1
+
+    for (tahun, bulan), group in kelompok:
+        nama_bulan = group["Tanggal"].dt.month_name().iloc[0]
+        ws_bb.cell(row=row, column=1, value=f"=== {nama_bulan.upper()} {tahun} ===")
+        row += 2
+
+        buku = buku_besar(group)
+
+        for akun, data in buku.items():
+            ws_bb.cell(row=row, column=1, value=f">> Akun: {akun}")
+            row += 1
+
+            data.to_excel(
+                writer,
+                sheet_name="Buku Besar",
+                startrow=row,
+                index=False
+            )
+            row += len(data) + 3
+
+    # =======================================================
+    # 3. SHEET NERACA SALDO — DIPISAH PER BULAN
+    # =======================================================
+    ws_ns = writer.book.create_sheet("Neraca Saldo")
+    row = 1
+
+    for (tahun, bulan), group in kelompok:
+        nama_bulan = group["Tanggal"].dt.month_name().iloc[0]
+        ws_ns.cell(row=row, column=1, value=f"=== {nama_bulan.upper()} {tahun} ===")
+        row += 2
+
+        neraca = neraca_saldo(group)
+
+        neraca.to_excel(
+            writer,
+            sheet_name="Neraca Saldo",
+            startrow=row,
+            index=True
+        )
+
+        row += len(neraca) + 3
 
     writer.close()
     return output.getvalue()
@@ -255,7 +315,7 @@ else:
     excel_file = export_excel_multi(df)
 
     st.download_button(
-        label="📥 Export ke Excel (Lengkap)",
+        label="📥 Export ke Excel (Per Bulan / Per Tahun)",
         data=excel_file,
         file_name="laporan_akuntansi_lengkap.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
