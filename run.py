@@ -28,6 +28,26 @@ st.markdown("""
         border-radius: 10px;
         font-size: 17px;
     }
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    .report-table th, .report-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .report-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    .report-table td {
+        text-align: right;
+    }
+    .report-table td:first-child, .report-table th:first-child {
+        text-align: left;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -47,6 +67,22 @@ def to_rp(n):
         return "Rp {:,}".format(int(n)).replace(",", ".")
     except:
         return "Rp 0"
+
+# ============================
+# FUNGSI UNTUK TABEL HTML
+# ============================
+def create_html_table(df, columns):
+    html = '<table class="report-table"><thead><tr>'
+    for col in columns:
+        html += f'<th>{col}</th>'
+    html += '</tr></thead><tbody>'
+    for _, row in df.iterrows():
+        html += '<tr>'
+        for col in columns:
+            html += f'<td>{row[col]}</td>'
+        html += '</tr>'
+    html += '</tbody></table>'
+    return html
 
 # ============================
 # FUNGSI AKUNTANSI
@@ -312,7 +348,8 @@ elif menu == "Jurnal Umum":
             df_show["Debit"] = df_show["Debit"].apply(to_rp)
             df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
 
-            st.table(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]])
+            html_table = create_html_table(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"])
+            st.markdown(html_table, unsafe_allow_html=True)
 
 # ============================
 # 3. BUKU BESAR
@@ -349,7 +386,8 @@ elif menu == "Buku Besar":
                 df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
                 df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
 
-                st.table(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]])
+                html_table = create_html_table(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]], ["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"])
+                st.markdown(html_table, unsafe_allow_html=True)
                 st.write("---")
 
 # ============================
@@ -385,7 +423,8 @@ elif menu == "Neraca Saldo":
             df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
             df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
 
-            st.table(df_show)
+            html_table = create_html_table(df_show, ["Akun", "Debit", "Kredit", "Saldo"])
+            st.markdown(html_table, unsafe_allow_html=True)
             st.write("---")
 
 # ============================
@@ -416,12 +455,3 @@ elif menu == "Export Excel":
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        excel_file = export_excel_multi(df)
-        st.download_button(
-            label="📥 Export ke Excel (Lengkap)",
-            data=excel_file,
-            file_name="laporan_akuntansi_lengkap.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
