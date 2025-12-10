@@ -271,14 +271,14 @@ elif menu == "Export Excel":
             current_row += 2
 
         # Auto width kolom (versi aman, hindari error merged cell)
-    for col_cells in ws.columns:
-        # ambil cell yang punya nilai & bukan merged cell
-        valid_cells = [cell for cell in col_cells if cell.value and not isinstance(cell, type(ws["A1"]))]  
-        if not valid_cells:
-            continue
-        max_length = max(len(str(cell.value)) for cell in valid_cells)
-        col_letter = valid_cells[0].column_letter
-        ws.column_dimensions[col_letter].width = max_length + 2
+        for col_cells in ws.columns:
+            # ambil cell yang punya nilai & bukan merged cell
+            valid_cells = [cell for cell in col_cells if cell.value and not isinstance(cell, type(ws["A1"]))]  
+            if not valid_cells:
+                continue
+            max_length = max(len(str(cell.value)) for cell in valid_cells)
+            col_letter = valid_cells[0].column_letter
+            ws.column_dimensions[col_letter].width = max_length + 2
 
         wb.save(output)
         output.seek(0)
@@ -295,5 +295,3 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-
