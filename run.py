@@ -200,11 +200,6 @@ elif menu == "Grafik":
         )
         st.altair_chart(chart, use_container_width=True)
 
-def neraca_saldo(df):
-    grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum()
-    grouped["Saldo"] = grouped["Debit"] - grouped["Kredit"]
-    return grouped
-
 # ============================
 # 6. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
 # ============================
@@ -335,5 +330,6 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
