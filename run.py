@@ -6,7 +6,7 @@ import io
 import calendar
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, Border, Side
 
 # ============================
 # CONFIG TAMPAK APLIKASI
@@ -129,7 +129,79 @@ if menu == "Input Transaksi":
         st.info("Belum ada transaksi.")
 
 # ============================
-# 6. EXPORT EXCEL
+# 2. JURNAL UMUM
+# ============================
+elif menu == "Jurnal Umum":
+    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df2 = df.copy()
+        df2["Debit"] = df2["Debit"].apply(to_rp)
+        df2["Kredit"] = df2["Kredit"].apply(to_rp)
+        st.dataframe(df2, use_container_width=True)
+
+# ============================
+# 3. BUKU BESAR
+# ============================
+elif menu == "Buku Besar":
+    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        buku = buku_besar(df)
+
+        for akun, data in buku.items():
+            st.write(f"### ▶ {akun}")
+            df2 = data.copy()
+            df2["Debit"] = df2["Debit"].apply(to_rp)
+            df2["Kredit"] = df2["Kredit"].apply(to_rp)
+            df2["Saldo"] = df2["Saldo"].apply(to_rp)
+            st.dataframe(df2, use_container_width=True)
+
+# ============================
+# 4. NERACA SALDO
+# ============================
+elif menu == "Neraca Saldo":
+    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        neraca = neraca_saldo(df)
+        df2 = neraca.copy()
+        df2["Debit"] = df2["Debit"].apply(to_rp)
+        df2["Kredit"] = df2["Kredit"].apply(to_rp)
+        df2["Saldo"] = df2["Saldo"].apply(to_rp)
+        st.dataframe(df2, use_container_width=True)
+
+# ============================
+# 5. GRAFIK
+# ============================
+elif menu == "Grafik":
+    st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        chart = alt.Chart(df).mark_bar().encode(
+            x="Akun",
+            y="Debit",
+            color="Akun"
+        ).properties(
+            title="Grafik Jumlah Debit per Akun",
+            width=700
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+# ============================
+# 6. EXPORT EXCEL (FORMAT LAPORAN RAPI)
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
@@ -137,59 +209,75 @@ elif menu == "Export Excel":
     def export_excel_multi(df):
         output = io.BytesIO()
         wb = Workbook()
+        ws = wb.active
+        ws.title = "Laporan Keuangan"
 
-        # --- SHEET 1: LAPORAN TRANSAKSI DENGAN PEMBATAS BULAN
-        ws1 = wb.active
-        ws1.title = "Laporan Transaksi"
         df["Tanggal"] = pd.to_datetime(df["Tanggal"])
         df["Bulan"] = df["Tanggal"].dt.month
         df["Tahun"] = df["Tanggal"].dt.year
         df_sorted = df.sort_values("Tanggal")
 
         current_row = 1
+        tahun_sekarang = None
+
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
         for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
-            nama_bulan = calendar.month_name[bulan].upper()
-            ws1.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-            cell = ws1.cell(row=current_row, column=1, value=f"=== LAPORAN BULAN {nama_bulan} {tahun} ===")
+            # Tambah header tahun jika berubah
+            if tahun != tahun_sekarang:
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+                cell = ws.cell(row=current_row, column=1, value=f"### Laporan Keuangan Tahun {tahun} ###")
+                cell.font = Font(bold=True, size=13)
+                current_row += 2
+                tahun_sekarang = tahun
+
+            # Header bulan
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+            cell = ws.cell(row=current_row, column=1, value=f"### Laporan Keuangan Bulan {nama_bulan} ###")
             cell.font = Font(bold=True, size=12)
             current_row += 1
 
-            headers = list(grup.columns.drop(["Bulan", "Tahun"]))
+            # Header tabel
+            headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
             for col_num, header in enumerate(headers, start=1):
-                ws1.cell(row=current_row, column=col_num, value=header).font = Font(bold=True)
+                cell = ws.cell(row=current_row, column=col_num, value=header)
+                cell.font = Font(bold=True)
+                cell.alignment = Alignment(horizontal="center")
+                cell.border = thin_border
             current_row += 1
 
-            for r in dataframe_to_rows(grup.drop(["Bulan", "Tahun"], axis=1), index=False, header=False):
+            # Isi data
+            for r in dataframe_to_rows(grup[headers], index=False, header=False):
                 for c_idx, val in enumerate(r, start=1):
-                    cell = ws1.cell(row=current_row, column=c_idx, value=val)
-                    if c_idx in [4, 5]:
-                        if isinstance(val, (int, float)):
-                            cell.number_format = '"Rp"#,##0'
-                    cell.alignment = Alignment(horizontal="left")
+                    cell = ws.cell(row=current_row, column=c_idx, value=val)
+                    if c_idx in [4, 5] and isinstance(val, (int, float)):
+                        cell.number_format = '"Rp"#,##0'
+                    elif c_idx in [4, 5] and isinstance(val, str) and val.isnumeric():
+                        cell.value = int(val)
+                        cell.number_format = '"Rp"#,##0'
+                    cell.border = thin_border
+                    if c_idx <= 3:
+                        cell.alignment = Alignment(horizontal="left")
+                    else:
+                        cell.alignment = Alignment(horizontal="right")
                 current_row += 1
+
             current_row += 2
 
-        # --- SHEET 2: BUKU BESAR
-        for akun, data in buku_besar(df).items():
-            ws_buku = wb.create_sheet(f"Buku Besar - {akun}")
-            for r_idx, row in enumerate(dataframe_to_rows(data, index=False, header=True), start=1):
-                for c_idx, val in enumerate(row, start=1):
-                    cell = ws_buku.cell(row=r_idx, column=c_idx, value=val)
-                    if r_idx == 1:
-                        cell.font = Font(bold=True)
-                    elif c_idx in [4, 5, 6] and isinstance(val, (int, float)):
-                        cell.number_format = '"Rp"#,##0'
-
-        # --- SHEET 3: NERACA SALDO
-        ws3 = wb.create_sheet("Neraca Saldo")
-        neraca = neraca_saldo(df).reset_index()
-        for r_idx, row in enumerate(dataframe_to_rows(neraca, index=False, header=True), start=1):
-            for c_idx, val in enumerate(row, start=1):
-                cell = ws3.cell(row=r_idx, column=c_idx, value=val)
-                if r_idx == 1:
-                    cell.font = Font(bold=True)
-                elif c_idx in [2, 3, 4] and isinstance(val, (int, float)):
-                    cell.number_format = '"Rp"#,##0'
+        # Auto width kolom
+        for col in ws.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            ws.column_dimensions[col_letter].width = max_length + 2
 
         wb.save(output)
         output.seek(0)
