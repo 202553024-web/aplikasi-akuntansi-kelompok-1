@@ -201,6 +201,26 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
+# MENU EXPORT EXCEL
+# ============================
+elif menu == "Export Excel":
+    st.markdown("<div class='subtitle'>📤 Export ke Excel</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi untuk diekspor.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        excel_file = export_excel_multi(df)
+
+        st.download_button(
+            label="📥 Download Excel (Lengkap)",
+            data=excel_file,
+            file_name="laporan_akuntansi_lengkap.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+
+# ============================
 # 6. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
 # ============================
 def export_excel_multi(df):
@@ -313,23 +333,3 @@ def export_excel_multi(df):
     wb.save(output)
     output.seek(0)
     return output.getvalue()
-
-
-# ============================
-# MENU EXPORT EXCEL
-# ============================
-elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export ke Excel</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada transaksi untuk diekspor.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        excel_file = export_excel_multi(df)
-
-        st.download_button(
-            label="📥 Download Excel (Lengkap)",
-            data=excel_file,
-            file_name="laporan_akuntansi_lengkap.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
