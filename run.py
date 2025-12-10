@@ -21,7 +21,6 @@ st.markdown("""
 <style>
     .title { font-size: 38px; font-weight: 800; color: #1a237e; text-align:center; }
     .subtitle { font-size: 22px; font-weight: 600; color:#1a237e; margin-top: 10px; }
-    .center { text-align: center; }
     .stButton>button {
         background-color: #1a237e !important;
         color: white !important;
@@ -302,19 +301,18 @@ elif menu == "Jurnal Umum":
         for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
             # Header Tahun
             if tahun != tahun_sekarang:
-                st.markdown(f"<div class='center'>### 📅 Tahun {tahun}</div>", unsafe_allow_html=True)
+                st.markdown(f"### 📅 Tahun {tahun}")
                 tahun_sekarang = tahun
 
             # Header Bulan
             nama_bulan = calendar.month_name[bulan].capitalize()
-            st.markdown(f"<div class='center'>#### 📌 Bulan {nama_bulan}</div>", unsafe_allow_html=True)
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
 
             df_show = grup.copy()
             df_show["Debit"] = df_show["Debit"].apply(to_rp)
             df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
 
-            st.dataframe(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], use_container_width=True)
-            st.write("---")
+            st.table(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]])
 
 # ============================
 # 3. BUKU BESAR
@@ -335,11 +333,11 @@ elif menu == "Buku Besar":
 
             # Header Tahun
             if tahun != tahun_sekarang:
-                st.markdown(f"<div class='center'>### 📅 Tahun {tahun}</div>", unsafe_allow_html=True)
+                st.markdown(f"### 📅 Tahun {tahun}")
                 tahun_sekarang = tahun
 
             nama_bulan = calendar.month_name[bulan].capitalize()
-            st.markdown(f"<div class='center'>#### 📌 Bulan {nama_bulan}</div>", unsafe_allow_html=True)
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
 
             # Akun per bulan
             buku = buku_besar(grup)
@@ -351,7 +349,7 @@ elif menu == "Buku Besar":
                 df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
                 df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
 
-                st.dataframe(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]], use_container_width=True)
+                st.table(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]])
                 st.write("---")
 
 # ============================
@@ -373,11 +371,11 @@ elif menu == "Neraca Saldo":
             
             # Header Tahun
             if tahun != tahun_sekarang:
-                st.markdown(f"<div class='center'>### 📅 Tahun {tahun}</div>", unsafe_allow_html=True)
+                st.markdown(f"### 📅 Tahun {tahun}")
                 tahun_sekarang = tahun
 
             nama_bulan = calendar.month_name[bulan].capitalize()
-            st.markdown(f"<div class='center'>#### 📌 Bulan {nama_bulan}</div>", unsafe_allow_html=True)
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
 
             neraca = grup.groupby("Akun")[["Debit", "Kredit"]].sum()
             neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
@@ -387,7 +385,7 @@ elif menu == "Neraca Saldo":
             df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
             df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
 
-            st.dataframe(df_show, use_container_width=True)
+            st.table(df_show)
             st.write("---")
 
 # ============================
