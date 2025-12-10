@@ -203,67 +203,144 @@ elif menu == "Grafik":
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
 
-    def export_excel_multi(df):
-        output = io.BytesIO()
-        wb = Workbook()
+def export_excel_multi(df):
+    output = io.BytesIO()
+    wb = Workbook()
+    ws_main = wb.active
+    ws_main.title = "Laporan Keuangan"
 
-        # SHEET 1: Laporan Keuangan
-        ws = wb.active
-        ws.title = "Laporan Keuangan"
+    # Format tanggal, bulan, tahun
+    df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+    df["Bulan"] = df["Tanggal"].dt.month
+    df["Tahun"] = df["Tanggal"].dt.year
+    df_sorted = df.sort_values("Tanggal")
 
-        tahun = df['Tanggal'].apply(lambda x: pd.to_datetime(x).year).unique()
-        current_row = 1
-        for t in tahun:
-            ws.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {t}").font = Font(bold=True)
+    current_row = 1
+    tahun_sekarang = None
+
+    # ====== 1. LAPORAN KEUANGAN PER BULAN ======
+    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+        # Header tahun
+        if tahun != tahun_sekarang:
+            ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+            cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
+            cell.font = Font(bold=True, size=14)
             current_row += 2
-            data_tahun = df[pd.to_datetime(df['Tanggal']).dt.year == t]
-            bulan = data_tahun['Tanggal'].apply(lambda x: pd.to_datetime(x).month).unique()
-            for b in bulan:
-                nama_bulan = calendar.month_name[b]
-                ws.cell(row=current_row, column=1, value=f"Laporan Keuangan Bulan {nama_bulan}").font = Font(bold=True)
-                current_row += 1
-                data_bulan = data_tahun[pd.to_datetime(data_tahun['Tanggal']).dt.month == b]
-                for r in dataframe_to_rows(data_bulan, index=False, header=True):
-                    ws.append(r)
-                current_row += len(data_bulan) + 2
+            tahun_sekarang = tahun
 
-        # Auto width kolom
-        for col_cells in ws.columns:
-            valid_cells = [cell for cell in col_cells if cell.value]
-            if not valid_cells:
-                continue
-            max_length = max(len(str(cell.value)) for cell in valid_cells)
-            col_letter = valid_cells[0].column_letter
-            ws.column_dimensions[col_letter].width = max_length + 2
+        # Header bulan
+        nama_bulan = calendar.month_name[bulan].capitalize()
+        ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+        cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Bulan {nama_bulan}")
+        cell.font = Font(bold=True, size=12)
+        current_row += 1
 
-        # Tambah sheet lain
-        ws2 = wb.create_sheet("Neraca")
-        ws2["A1"] = "Laporan Neraca"
-        ws2["A1"].font = Font(bold=True)
-        ws2.append(["Aset", "Kewajiban", "Modal"])
-        ws2.append(["Rp0", "Rp0", "Rp0"])
+        # Header kolom (tanpa border)
+        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+        for col_num, header in enumerate(headers, start=1):
+            cell = ws_main.cell(row=current_row, column=col_num, value=header)
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal="center")
+        current_row += 1
 
-        ws3 = wb.create_sheet("Buku Besar")
-        ws3["A1"] = "Laporan Buku Besar"
-        ws3["A1"].font = Font(bold=True)
-        ws3.append(["Akun", "Tanggal", "Debit", "Kredit"])
-        ws3.append(["Kas", "2025-12-10", "Rp1.000.000", "Rp0"])
+        # Isi data
+        for r in dataframe_to_rows(grup[headers], index=False, header=False):
+            for c_idx, val in enumerate(r, start=1):
+                cell = ws_main.cell(row=current_row, column=c_idx)
 
-        ws4 = wb.create_sheet("Laba Rugi")
-        ws4["A1"] = "Laporan Laba Rugi"
-        ws4["A1"].font = Font(bold=True)
-        ws4.append(["Pendapatan", "Beban", "Laba/Rugi"])
-        ws4.append(["Rp5.000.000", "Rp3.000.000", "Rp2.000.000"])
+                # Kolom debit & kredit format Rp
+                if c_idx in [4, 5]:
+                    try:
+                        val_num = int(val)
+                    except:
+                        val_num = 0
+                    cell.value = val_num
+                    cell.number_format = '"Rp"#,##0'
+                    cell.alignment = Alignment(horizontal="right")
+                else:
+                    cell.value = val
+                    cell.alignment = Alignment(horizontal="left")
 
-        ws5 = wb.create_sheet("Arus Kas")
-        ws5["A1"] = "Laporan Arus Kas"
-        ws5["A1"].font = Font(bold=True)
-        ws5.append(["Tanggal", "Deskripsi", "Kas Masuk", "Kas Keluar"])
-        ws5.append(["2025-12-10", "Penjualan", "Rp1.000.000", "Rp0"])
+            current_row += 1
+        current_row += 2
 
-        wb.save(output)
-        output.seek(0)
-        return output.getvalue()
+    # Auto width kolom
+    for col_cells in ws_main.columns:
+        max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col_cells)
+        ws_main.column_dimensions[col_cells[0].column_letter].width = max_length + 2
+
+    # ====== 2. SHEET JURNAL ======
+    ws_jurnal = wb.create_sheet("Jurnal Umum")
+    headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+    for col_num, header in enumerate(headers, start=1):
+        ws_jurnal.cell(row=1, column=col_num, value=header).font = Font(bold=True)
+    for i, r in enumerate(dataframe_to_rows(df[headers], index=False, header=False), start=2):
+        for c_idx, val in enumerate(r, start=1):
+            cell = ws_jurnal.cell(row=i, column=c_idx)
+            if c_idx in [4, 5]:
+                try:
+                    val_num = int(val)
+                except:
+                    val_num = 0
+                cell.value = val_num
+                cell.number_format = '"Rp"#,##0'
+                cell.alignment = Alignment(horizontal="right")
+            else:
+                cell.value = val
+
+    # ====== 3. SHEET BUKU BESAR ======
+    ws_bb = wb.create_sheet("Buku Besar")
+    akun_list = df["Akun"].unique()
+    row_bb = 1
+    for akun in akun_list:
+        ws_bb.cell(row=row_bb, column=1, value=f"Akun: {akun}").font = Font(bold=True, size=12)
+        row_bb += 1
+        df_akun = df[df["Akun"] == akun].copy()
+        df_akun["Saldo"] = df_akun["Debit"].cumsum() - df_akun["Kredit"].cumsum()
+        headers = ["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]
+        for col_num, header in enumerate(headers, start=1):
+            ws_bb.cell(row=row_bb, column=col_num, value=header).font = Font(bold=True)
+        row_bb += 1
+        for r in dataframe_to_rows(df_akun[headers], index=False, header=False):
+            for c_idx, val in enumerate(r, start=1):
+                cell = ws_bb.cell(row=row_bb, column=c_idx)
+                if c_idx >= 3:  # Debit, Kredit, Saldo
+                    try:
+                        val_num = int(val)
+                    except:
+                        val_num = 0
+                    cell.value = val_num
+                    cell.number_format = '"Rp"#,##0'
+                    cell.alignment = Alignment(horizontal="right")
+                else:
+                    cell.value = val
+            row_bb += 1
+        row_bb += 2
+
+    # ====== 4. SHEET NERACA SALDO ======
+    ws_ns = wb.create_sheet("Neraca Saldo")
+    neraca = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
+    neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
+    headers = ["Akun", "Debit", "Kredit", "Saldo"]
+    for col_num, header in enumerate(headers, start=1):
+        ws_ns.cell(row=1, column=col_num, value=header).font = Font(bold=True)
+    for i, r in enumerate(dataframe_to_rows(neraca[headers], index=False, header=False), start=2):
+        for c_idx, val in enumerate(r, start=1):
+            cell = ws_ns.cell(row=i, column=c_idx)
+            if c_idx >= 2:  # angka
+                try:
+                    val_num = int(val)
+                except:
+                    val_num = 0
+                cell.value = val_num
+                cell.number_format = '"Rp"#,##0'
+                cell.alignment = Alignment(horizontal="right")
+            else:
+                cell.value = val
+
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
@@ -276,3 +353,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
