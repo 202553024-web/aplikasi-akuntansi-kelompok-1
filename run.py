@@ -260,9 +260,3 @@ else:
         file_name="laporan_akuntansi_lengkap.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
-tolong ubah tampilannya menjadi lebih bagus dan tolong jika sudah di upload ke excel tolongt pisahkah lagi sesuai bulan dan tolong langsung rapikan juga laporan ecxelnya
-
-
-tolong untuk transaksi yang beda bulan di bedakan kolomnya dan sheet yang di buat di excel hanya tiga yaitu jurnal umum, buku besar dan neraca saldo.
