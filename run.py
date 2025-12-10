@@ -203,10 +203,7 @@ elif menu == "Grafik":
 # ============================
 # 6. EXPORT EXCEL MULTI-SHEET DENGAN PEMBATAS BULAN
 # ============================
-elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
-
-   def export_excel_multi(df):
+def export_excel_multi(df):
     output = io.BytesIO()
     wb = Workbook()
 
@@ -218,7 +215,6 @@ elif menu == "Export Excel":
     df["Tahun"] = df["Tanggal"].dt.year
     df_sorted = df.sort_values("Tanggal")
 
-    # Ambil periode pertama dan terakhir
     bulan_awal = calendar.month_name[int(df_sorted["Bulan"].iloc[0])]
     tahun_awal = df_sorted["Tahun"].iloc[0]
     bulan_akhir = calendar.month_name[int(df_sorted["Bulan"].iloc[-1])]
@@ -227,35 +223,31 @@ elif menu == "Export Excel":
     periode_text = f"Periode: {bulan_awal} {tahun_awal} - {bulan_akhir} {tahun_akhir}"
 
     # =====================================================
-    #  SHEET 1: JURNAL UMUM (DENGAN HEADER PERIODE)
+    #  SHEET 1: JURNAL UMUM
     # =====================================================
     ws1 = wb.active
     ws1.title = "Jurnal Umum"
 
-    # Header periode
     ws1.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
     header_cell = ws1.cell(row=1, column=1, value=periode_text)
     header_cell.font = Font(bold=True, size=13)
     header_cell.alignment = Alignment(horizontal="center")
 
-    current_row = 3  # mulai baris 3 setelah header periode
+    current_row = 3
 
     for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
         nama_bulan = calendar.month_name[bulan].upper()
 
-        # Judul bulan per grup
         ws1.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=6)
         cell = ws1.cell(row=current_row, column=1, value=f"=== {nama_bulan} {tahun} ===")
         cell.font = Font(bold=True, size=12)
         current_row += 1
 
-        # Header tabel
         headers = list(grup.columns.drop(["Bulan", "Tahun"]))
         for col_num, header in enumerate(headers, start=1):
             ws1.cell(row=current_row, column=col_num, value=header).font = Font(bold=True)
         current_row += 1
 
-        # Isi tabel
         for r in dataframe_to_rows(grup.drop(["Bulan", "Tahun"], axis=1), index=False, header=False):
             for c_idx, val in enumerate(r, start=1):
                 cell = ws1.cell(row=current_row, column=c_idx, value=val)
@@ -263,10 +255,10 @@ elif menu == "Export Excel":
                     cell.number_format = '"Rp"#,##0'
             current_row += 1
 
-        current_row += 2  # spasi antar bulan
+        current_row += 2
 
     # =====================================================
-    #  SHEET 2: BUKU BESAR (DENGAN HEADER PERIODE)
+    #  SHEET 2: BUKU BESAR
     # =====================================================
     ws2 = wb.create_sheet("Buku Besar")
 
@@ -276,8 +268,8 @@ elif menu == "Export Excel":
     h2.alignment = Alignment(horizontal="center")
 
     row_buku = 3
-
     buku = buku_besar(df)
+
     for akun, data in buku.items():
         ws2.merge_cells(start_row=row_buku, start_column=1, end_row=row_buku, end_column=6)
         ws2.cell(row=row_buku, column=1, value=f"== {akun.upper()} ==").font = Font(bold=True, size=12)
@@ -297,7 +289,7 @@ elif menu == "Export Excel":
         row_buku += 2
 
     # =====================================================
-    #  SHEET 3: NERACA SALDO (DENGAN HEADER PERIODE)
+    #  SHEET 3: NERACA SALDO
     # =====================================================
     ws3 = wb.create_sheet("Neraca Saldo")
 
@@ -333,3 +325,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
