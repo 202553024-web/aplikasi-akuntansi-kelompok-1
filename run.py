@@ -1,322 +1,131 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
 from datetime import datetime
-import io
+from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import os
 
-# ============================
-# CONFIG TAMPAK APLIKASI
-# ============================
-st.set_page_config(
-    page_title="Aplikasi Akuntansi",
-    page_icon="💰",
-    layout="wide"
-)
+# ===== Fungsi Format Uang Rupiah =====
+def format_rupiah(x):
+    return f"Rp {x:,.0f}".replace(",", ".")
 
-# CSS untuk UI modern + warna teks terlihat
-st.markdown("""
-<style>
-    .title { font-size: 38px; font-weight: 800; color: #1a237e; text-align:center; }
-    .subtitle { font-size: 22px; font-weight: 600; color:#1a237e; margin-top: 10px; }
-    .stButton>button {
-        background-color: #1a237e !important;
-        color: white !important;
-        padding: 10px 20px;
-        border-radius: 10px;
-        font-size: 17px;
-    }
-</style>
-""", unsafe_allow_html=True)
+# ===== Fungsi Tambah Data =====
+def tambah_data(nama_file, data_baru):
+    if not os.path.exists(nama_file):
+        # buat file kosong jika belum ada
+        df = pd.DataFrame(columns=["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"])
+        df.to_excel(nama_file, index=False)
 
-st.markdown("<div class='title'>📊 Aplikasi Akuntansi</div>", unsafe_allow_html=True)
-st.write("")
+    df = pd.read_excel(nama_file)
+    df = pd.concat([df, pd.DataFrame([data_baru])], ignore_index=True)
+    df.to_excel(nama_file, index=False)
 
-# ============================
-# SESSION DATA
-# ============================
-if "transaksi" not in st.session_state:
-    st.session_state.transaksi = []
-
-# ============================
-# FORMAT RUPIAH
-# ============================
-def to_rp(n):
-    try:
-        return "Rp {:,}".format(int(n)).replace(",", ".")
-    except:
-        return "Rp 0"
-
-# ============================
-#  FUNGSI AKUNTANSI
-# ============================
-def tambah_transaksi(tgl, akun, ket, debit, kredit):
-    st.session_state.transaksi.append({
-        "Tanggal": tgl,
-        "Akun": akun,
-        "Keterangan": ket,
-        "Debit": int(debit),
-        "Kredit": int(kredit)
-    })
-
-def hapus_transaksi(idx):
-    st.session_state.transaksi.pop(idx)
-
-def buku_besar(df):
-    akun_list = df["Akun"].unique()
-    buku_besar_data = {}
-
-    for akun in akun_list:
-        df_akun = df[df["Akun"] == akun].copy()
-        df_akun["Saldo"] = df_akun["Debit"].cumsum() - df_akun["Kredit"].cumsum()
-        buku_besar_data[akun] = df_akun
-
-    return buku_besar_data
-
-def neraca_saldo(df):
-    grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum()
-    grouped["Saldo"] = grouped["Debit"] - grouped["Kredit"]
-    return grouped
-
-# ============================
-# SIDEBAR MENU
-# ============================
-menu = st.sidebar.radio(
-    "📌 PILIH MENU",
-    ["Input Transaksi", "Jurnal Umum", "Buku Besar", "Neraca Saldo", "Grafik", "Export Excel"]
-)
-
-# ============================
-# 1. INPUT TRANSAKSI
-# ============================
-if menu == "Input Transaksi":
-    st.markdown("<div class='subtitle'>📝 Input Transaksi</div>", unsafe_allow_html=True)
-
-    akun_list = [
-        "Kas",
-        "Piutang",
-        "Utang",
-        "Modal",
-        "Pendapatan Jasa",
-        "Beban Gaji",
-        "Beban Listrik",
-        "Beban Sewa"
-    ]
-
-    tanggal = st.date_input("Tanggal", datetime.now())
-    akun = st.selectbox("Akun", akun_list)
-    ket = st.text_input("Keterangan")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        debit = st.number_input("Debit (Rp)", min_value=0, step=1000, format="%d")
-    with col2:
-        kredit = st.number_input("Kredit (Rp)", min_value=0, step=1000, format="%d")
-
-    if st.button("Tambah Transaksi"):
-        tambah_transaksi(str(tanggal), akun, ket, debit, kredit)
-        st.success("Transaksi berhasil ditambahkan!")
-
-    st.write("### 📄 Daftar Transaksi")
-
-    if len(st.session_state.transaksi) > 0:
-        df = pd.DataFrame(st.session_state.transaksi)
-
-        df_display = df.copy()
-        df_display["Debit"] = df_display["Debit"].apply(to_rp)
-        df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
-
-        st.dataframe(df_display, use_container_width=True)
-
-        idx = st.number_input("Hapus transaksi index", 0, len(df)-1)
-
-        if st.button("Hapus"):
-            hapus_transaksi(idx)
-            st.warning("Transaksi berhasil dihapus!")
-    else:
-        st.info("Belum ada transaksi.")
-
-# ============================
-# 2. JURNAL UMUM
-# ============================
-elif menu == "Jurnal Umum":
-    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        df2 = df.copy()
-        df2["Debit"] = df2["Debit"].apply(to_rp)
-        df2["Kredit"] = df2["Kredit"].apply(to_rp)
-        st.dataframe(df2, use_container_width=True)
-
-# ============================
-# 3. BUKU BESAR
-# ============================
-elif menu == "Buku Besar":
-    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        buku = buku_besar(df)
-
-        for akun, data in buku.items():
-            st.write(f"### ▶ {akun}")
-
-            df2 = data.copy()
-            df2["Debit"] = df2["Debit"].apply(to_rp)
-            df2["Kredit"] = df2["Kredit"].apply(to_rp)
-            df2["Saldo"] = df2["Saldo"].apply(to_rp)
-
-            st.dataframe(df2, use_container_width=True)
-
-# ============================
-# 4. NERACA SALDO
-# ============================
-elif menu == "Neraca Saldo":
-    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        neraca = neraca_saldo(df)
-
-        df2 = neraca.copy()
-        df2["Debit"] = df2["Debit"].apply(to_rp)
-        df2["Kredit"] = df2["Kredit"].apply(to_rp)
-        df2["Saldo"] = df2["Saldo"].apply(to_rp)
-
-        st.dataframe(df2, use_container_width=True)
-
-# ============================
-# 5. Grafik
-# ============================
-elif menu == "Grafik":
-    st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-
-        chart = alt.Chart(df).mark_bar().encode(
-            x="Akun",
-            y="Debit",
-            color="Akun"
-        ).properties(
-            title="Grafik Jumlah Debit per Akun",
-            width=700
-        )
-
-        st.altair_chart(chart, use_container_width=True)
-
-# ============================
-# EXPORT EXCEL MULTI-BULAN
-# ============================
-def export_excel_multi(df):
-    # pastikan kolom tanggal berupa datetime
+# ===== Fungsi Tulis ke Excel dengan Format =====
+def tulis_laporan_keuangan(nama_file):
+    df = pd.read_excel(nama_file)
     df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+    df["Bulan"] = df["Tanggal"].dt.strftime("%B %Y")
 
-    output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine="openpyxl")
+    # urutkan berdasarkan bulan
+    df = df.sort_values("Tanggal")
 
-    # =======================================================
-    # 1. SHEET JURNAL UMUM — DIPISAH BERDASARKAN BULAN/TAHUN
-    # =======================================================
-    ws_jurnal = writer.book.create_sheet("Jurnal Umum")
+    wb = load_workbook(nama_file)
+    ws = wb.active
+    ws.title = "Laporan Keuangan"
 
-    kelompok = df.groupby([df["Tanggal"].dt.year, df["Tanggal"].dt.month])
-    row = 1
+    # bersihkan sheet lama
+    for row in ws["A1:Z9999"]:
+        for cell in row:
+            cell.value = None
 
-    for (tahun, bulan), group in kelompok:
-        nama_bulan = group["Tanggal"].dt.month_name().iloc[0]
+    row_num = 1
 
-        # Header bulan
-        ws_jurnal.cell(row=row, column=1, value=f"=== {nama_bulan.upper()} {tahun} ===")
-        row += 2
+    for bulan, group in df.groupby("Bulan"):
+        # Header Bulan
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=4)
+        bulan_cell = ws.cell(row=row_num, column=1)
+        bulan_cell.value = f"=== {bulan.upper()} ==="
+        bulan_cell.font = Font(bold=True, size=12, color="0000FF")
+        bulan_cell.alignment = Alignment(horizontal="center")
+        row_num += 1
 
-        # Data jurnal
-        group_sorted = group.sort_values("Tanggal")
-        group_sorted.to_excel(
-            writer,
-            sheet_name="Jurnal Umum",
-            startrow=row,
-            index=False
-        )
-        row += len(group_sorted) + 3
+        # Header tabel
+        headers = ["Akun", "Debit", "Kredit", "Saldo"]
+        for col_num, header in enumerate(headers, start=1):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.value = header
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+        row_num += 1
 
-    # Hapus sheet default jika ada
-    if "Sheet1" in writer.book.sheetnames:
-        writer.book.remove(writer.book["Sheet1"])
+        # Isi data
+        akun_unik = group["Akun"].unique()
+        for akun in akun_unik:
+            df_akun = group[group["Akun"] == akun]
+            debit_total = df_akun["Debit"].sum()
+            kredit_total = df_akun["Kredit"].sum()
+            saldo = debit_total - kredit_total
 
-    # =======================================================
-    # 2. SHEET BUKU BESAR — DIPISAH PER BULAN DAN PER AKUN
-    # =======================================================
-    ws_bb = writer.book.create_sheet("Buku Besar")
-    row = 1
+            ws.cell(row=row_num, column=1, value=akun)
+            ws.cell(row=row_num, column=2, value=debit_total)
+            ws.cell(row=row_num, column=3, value=kredit_total)
+            ws.cell(row=row_num, column=4, value=saldo)
+            row_num += 1
 
-    for (tahun, bulan), group in kelompok:
-        nama_bulan = group["Tanggal"].dt.month_name().iloc[0]
-        ws_bb.cell(row=row, column=1, value=f"=== {nama_bulan.upper()} {tahun} ===")
-        row += 2
+        # Total per bulan
+        debit_total_bulan = group["Debit"].sum()
+        kredit_total_bulan = group["Kredit"].sum()
+        saldo_total_bulan = debit_total_bulan - kredit_total_bulan
 
-        buku = buku_besar(group)
+        ws.cell(row=row_num, column=1, value="TOTAL").font = Font(bold=True)
+        ws.cell(row=row_num, column=2, value=debit_total_bulan)
+        ws.cell(row=row_num, column=3, value=kredit_total_bulan)
+        ws.cell(row=row_num, column=4, value=saldo_total_bulan)
+        row_num += 3  # jarak antar bulan
 
-        for akun, data in buku.items():
-            ws_bb.cell(row=row, column=1, value=f">> Akun: {akun}")
-            row += 1
+    # Format angka Rupiah dan border
+    thin_border = Border(left=Side(style="thin"), right=Side(style="thin"),
+                         top=Side(style="thin"), bottom=Side(style="thin"))
 
-            data.to_excel(
-                writer,
-                sheet_name="Buku Besar",
-                startrow=row,
-                index=False
-            )
-            row += len(data) + 3
+    for row in ws.iter_rows(min_row=1, max_row=row_num - 1, min_col=2, max_col=4):
+        for cell in row:
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = '"Rp"#,##0'
+            cell.border = thin_border
 
-    # =======================================================
-    # 3. SHEET NERACA SALDO — DIPISAH PER BULAN
-    # =======================================================
-    ws_ns = writer.book.create_sheet("Neraca Saldo")
-    row = 1
+    wb.save(nama_file)
 
-    for (tahun, bulan), group in kelompok:
-        nama_bulan = group["Tanggal"].dt.month_name().iloc[0]
-        ws_ns.cell(row=row, column=1, value=f"=== {nama_bulan.upper()} {tahun} ===")
-        row += 2
+# ===== Tampilan Streamlit =====
+st.title("📘 Aplikasi Laporan Keuangan Bulanan")
+st.write("Input transaksi dan ekspor ke Excel dengan format rapi per bulan.")
 
-        neraca = neraca_saldo(group)
+nama_file = "Laporan_Keuangan.xlsx"
 
-        neraca.to_excel(
-            writer,
-            sheet_name="Neraca Saldo",
-            startrow=row,
-            index=True
-        )
+with st.form("form_input"):
+    tanggal = st.date_input("Tanggal Transaksi", datetime.now())
+    akun = st.text_input("Nama Akun")
+    keterangan = st.text_input("Keterangan")
+    debit = st.number_input("Debit (Rp)", min_value=0)
+    kredit = st.number_input("Kredit (Rp)", min_value=0)
+    submitted = st.form_submit_button("Tambah Transaksi")
 
-        row += len(neraca) + 3
+if submitted:
+    tambah_data(nama_file, {
+        "Tanggal": tanggal,
+        "Akun": akun,
+        "Keterangan": keterangan,
+        "Debit": debit,
+        "Kredit": kredit
+    })
+    tulis_laporan_keuangan(nama_file)
+    st.success("✅ Transaksi berhasil disimpan dan laporan diperbarui!")
 
-    writer.close()
-    return output.getvalue()
+if os.path.exists(nama_file):
+    df_tampil = pd.read_excel(nama_file)
+    df_tampil["Debit"] = df_tampil["Debit"].apply(lambda x: format_rupiah(x))
+    df_tampil["Kredit"] = df_tampil["Kredit"].apply(lambda x: format_rupiah(x))
+    st.dataframe(df_tampil)
 
-# ============================
-# TOMBOL EXPORT
-# ============================
-st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
-
-if len(st.session_state.transaksi) == 0:
-    st.info("Belum ada transaksi untuk diekspor.")
-else:
-    df = pd.DataFrame(st.session_state.transaksi)
-    excel_file = export_excel_multi(df)
-
-    st.download_button(
-        label="📥 Export ke Excel (Per Bulan / Per Tahun)",
-        data=excel_file,
-        file_name="laporan_akuntansi_lengkap.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    with open(nama_file, "rb") as f:
+        st.download_button("📥 Unduh Laporan Excel", f, file_name="Laporan_Keuangan.xlsx")
