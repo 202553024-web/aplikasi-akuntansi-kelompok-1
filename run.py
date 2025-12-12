@@ -7,6 +7,7 @@ import calendar
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 # ============================
 # CONFIG TAMPAK APLIKASI
@@ -176,7 +177,7 @@ def export_excel_multi(df):
     # Auto-fit kolom
     for col in ws_main.columns:
         max_length = 0
-        column = col[0].column_letter
+        column = get_column_letter(col[0].column)
         for cell in col:
             try:
                 if cell.value:
@@ -229,7 +230,7 @@ def export_excel_multi(df):
     # Auto-fit kolom
     for col in ws_jurnal.columns:
         max_length = 0
-        column = col[0].column_letter
+        column = get_column_letter(col[0].column)
         for cell in col:
             try:
                 if cell.value:
@@ -315,7 +316,7 @@ def export_excel_multi(df):
     # Auto-fit kolom
     for col in ws_bb.columns:
         max_length = 0
-        column = col[0].column_letter
+        column = get_column_letter(col[0].column)
         for cell in col:
             try:
                 if cell.value:
@@ -369,7 +370,7 @@ def export_excel_multi(df):
     # Auto-fit kolom
     for col in ws_ns.columns:
         max_length = 0
-        column = col[0].column_letter
+        column = get_column_letter(col[0].column)
         for cell in col:
             try:
                 if cell.value:
@@ -561,7 +562,7 @@ elif menu == "Grafik":
 # 6. EXPORT EXCEL (MULTI SHEET)
 # ============================
 elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>📤 Export Excel </div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
@@ -569,8 +570,9 @@ elif menu == "Export Excel":
         df = pd.DataFrame(st.session_state.transaksi)
         excel_file = export_excel_multi(df)
         st.download_button(
-            label="📥 Export ke Excel (Lengkap)",
+            label="📥 Export ke Excel",
             data=excel_file,
-            file_name="laporan_akuntansi_lengkap.xlsx",
+            file_name="Laporan_Akuntansi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
