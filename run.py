@@ -78,7 +78,7 @@ def neraca_saldo(df):
     return grouped
 
 # ============================
-# FUNGSI EXPORT EXCEL
+# FUNGSI EXPORT EXCEL (REVISI FINAL)
 # ============================
 def export_excel_multi(df):
     import io, calendar
@@ -558,10 +558,10 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# 6. EXPORT EXCEL 
+# 6. EXPORT EXCEL (MULTI SHEET)
 # ============================
 elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel </div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
@@ -569,8 +569,8 @@ elif menu == "Export Excel":
         df = pd.DataFrame(st.session_state.transaksi)
         excel_file = export_excel_multi(df)
         st.download_button(
-            label="📥 Export ke Excel",
+            label="📥 Export ke Excel (Lengkap)",
             data=excel_file,
-            file_name="Laporan_Akuntansi.xlsx",
+            file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
