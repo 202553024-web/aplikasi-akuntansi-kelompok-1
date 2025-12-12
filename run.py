@@ -78,7 +78,7 @@ def neraca_saldo(df):
     return grouped
 
 # ============================
-# FUNGSI EXPORT EXCEL (REVISI SESUAI GAMBAR)
+# FUNGSI EXPORT EXCEL (DIPINDAH KE SINI)
 # ============================
 def export_excel_multi(df):
     import io, calendar
@@ -283,3 +283,157 @@ if menu == "Input Transaksi":
 
     if len(st.session_state.transaksi) > 0:
         df = pd.DataFrame(st.session_state.transaksi)
+        df_display = df.copy()
+        df_display["Debit"] = df_display["Debit"].apply(to_rp)
+        df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
+        st.dataframe(df_display, use_container_width=True)
+
+        idx = st.number_input("Hapus transaksi index", 0, len(df)-1)
+        if st.button("Hapus"):
+            hapus_transaksi(idx)
+            st.warning("Transaksi berhasil dihapus!")
+    else:
+        st.info("Belum ada transaksi.")
+
+# ============================
+# 2. JURNAL UMUM
+# ============================
+elif menu == "Jurnal Umum":
+    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            # Header Bulan
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            df_show = grup.copy()
+            df_show["Debit"] = df_show["Debit"].apply(to_rp)
+            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+
+            st.dataframe(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], use_container_width=True)
+
+# ============================
+# 3. BUKU BESAR
+# ============================
+elif menu == "Buku Besar":
+    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            # Akun per bulan
+            buku = buku_besar(grup)
+            for akun, data in buku.items():
+                st.markdown(f"##### ▶ {akun}")
+
+                df_show = data.copy()
+                df_show["Debit"] = df_show["Debit"].apply(to_rp)
+                df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+                df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
+
+                st.dataframe(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]], use_container_width=True)
+                st.write("---")
+
+# ============================
+# 4. NERACA SALDO
+# ============================
+elif menu == "Neraca Saldo":
+    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+            
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            neraca = grup.groupby("Akun")[["Debit", "Kredit"]].sum()
+            neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
+
+            df_show = neraca.copy()
+            df_show["Debit"] = df_show["Debit"].apply(to_rp)
+            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
+            df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
+
+            st.dataframe(df_show, use_container_width=True)
+            st.write("---")
+
+# ============================
+# 5. GRAFIK
+# ============================
+elif menu == "Grafik":
+    st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        chart = alt.Chart(df).mark_bar().encode(
+            x="Akun",
+            y="Debit",
+            color="Akun"
+        ).properties(
+            title="Grafik Jumlah Debit per Akun",
+            width=700
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+# ============================
+# 6. EXPORT EXCEL (MULTI SHEET TANPA BORDER)
+# ============================
+elif menu == "Export Excel":
+    st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi untuk diekspor.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        excel_file = export_excel_multi(df)
+        st.download_button(
+            label="📥 Export ke Excel (Lengkap)",
+            data=excel_file,
+            file_name="laporan_akuntansi_lengkap.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
