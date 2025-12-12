@@ -78,7 +78,7 @@ def neraca_saldo(df):
     return grouped
 
 # ============================
-# FUNGSI EXPORT EXCEL (REVISI SESUAI GAMBAR)
+# FUNGSI EXPORT EXCEL
 # ============================
 def export_excel_multi(df):
     import io, calendar
@@ -93,6 +93,7 @@ def export_excel_multi(df):
     # Warna dan Style
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     subheader_fill = PatternFill(start_color="D6DCE4", end_color="D6DCE4", fill_type="solid")
+    subheader_blue_fill = PatternFill(start_color="B4C7E7", end_color="B4C7E7", fill_type="solid")
     white_font = Font(color="FFFFFF", bold=True, size=11)
     black_font = Font(color="000000", bold=True, size=11)
     
@@ -164,7 +165,7 @@ def export_excel_multi(df):
                     else:
                         cell.value = val
                         cell.alignment = Alignment(horizontal="right")
-                        cell.number_format = '"Rp"#,##0'
+                        cell.number_format = '#,##0'
                 else:
                     cell.value = val
                     if c_idx == 1:
@@ -172,12 +173,18 @@ def export_excel_multi(df):
             current_row += 1
         current_row += 1
 
-    # Set Lebar Kolom
-    ws_main.column_dimensions['A'].width = 20
-    ws_main.column_dimensions['B'].width = 18
-    ws_main.column_dimensions['C'].width = 20
-    ws_main.column_dimensions['D'].width = 20
-    ws_main.column_dimensions['E'].width = 20
+    # Auto-fit kolom
+    for col in ws_main.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_main.column_dimensions[column].width = adjusted_width
 
     # ============================
     # SHEET 2: JURNAL UMUM
@@ -213,17 +220,24 @@ def export_excel_multi(df):
                 else:
                     cell.value = val
                     cell.alignment = Alignment(horizontal="right")
-                    cell.number_format = '"Rp"#,##0'
+                    cell.number_format = '#,##0'
             else:
                 cell.value = val
                 if c_idx == 1:
                     cell.alignment = Alignment(horizontal="center")
     
-    ws_jurnal.column_dimensions['A'].width = 20
-    ws_jurnal.column_dimensions['B'].width = 18
-    ws_jurnal.column_dimensions['C'].width = 20
-    ws_jurnal.column_dimensions['D'].width = 20
-    ws_jurnal.column_dimensions['E'].width = 20
+    # Auto-fit kolom
+    for col in ws_jurnal.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_jurnal.column_dimensions[column].width = adjusted_width
 
     # ============================
     # SHEET 3: BUKU BESAR
@@ -245,10 +259,10 @@ def export_excel_multi(df):
         ws_bb.merge_cells(start_row=row_bb, start_column=1, end_row=row_bb, end_column=2)
         cell = ws_bb.cell(row=row_bb, column=1, value=f"Nama Akun :")
         cell.font = black_font
-        cell.fill = subheader_fill
+        cell.fill = subheader_blue_fill
         cell.border = thin_border
         cell = ws_bb.cell(row=row_bb, column=2)
-        cell.fill = subheader_fill
+        cell.fill = subheader_blue_fill
         cell.border = thin_border
         
         cell = ws_bb.cell(row=row_bb, column=3, value=akun)
@@ -256,6 +270,7 @@ def export_excel_multi(df):
         ws_bb.merge_cells(start_row=row_bb, start_column=3, end_row=row_bb, end_column=5)
         for col in range(3, 6):
             ws_bb.cell(row=row_bb, column=col).border = thin_border
+            ws_bb.cell(row=row_bb, column=col).fill = subheader_blue_fill
         row_bb += 1
 
         # Header Kolom
@@ -283,13 +298,13 @@ def export_excel_multi(df):
                             cell.value = "-"
                             cell.alignment = Alignment(horizontal="center")
                         else:
-                            cell.value = val
+                            cell.value = val if val is not None else 0
                             cell.alignment = Alignment(horizontal="right")
-                            cell.number_format = '"Rp"#,##0'
+                            cell.number_format = '#,##0'
                     else:
                         cell.value = val
                         cell.alignment = Alignment(horizontal="right")
-                        cell.number_format = '"Rp"#,##0'
+                        cell.number_format = '#,##0'
                 else:
                     cell.value = val
                     if c_idx == 1:
@@ -297,11 +312,18 @@ def export_excel_multi(df):
             row_bb += 1
         row_bb += 2
 
-    ws_bb.column_dimensions['A'].width = 20
-    ws_bb.column_dimensions['B'].width = 18
-    ws_bb.column_dimensions['C'].width = 20
-    ws_bb.column_dimensions['D'].width = 20
-    ws_bb.column_dimensions['E'].width = 20
+    # Auto-fit kolom
+    for col in ws_bb.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_bb.column_dimensions[column].width = adjusted_width
 
     # ============================
     # SHEET 4: NERACA SALDO
@@ -340,14 +362,22 @@ def export_excel_multi(df):
                 else:
                     cell.value = val
                     cell.alignment = Alignment(horizontal="right")
-                    cell.number_format = '"Rp"#,##0'
+                    cell.number_format = '#,##0'
             else:
                 cell.value = val
 
-    ws_ns.column_dimensions['A'].width = 18
-    ws_ns.column_dimensions['B'].width = 20
-    ws_ns.column_dimensions['C'].width = 20
-    ws_ns.column_dimensions['D'].width = 20
+    # Auto-fit kolom
+    for col in ws_ns.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_ns.column_dimensions[column].width = adjusted_width
 
     wb.save(output)
     output.seek(0)
@@ -528,7 +558,7 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# 6. EXPORT EXCEL (MULTI SHEET TANPA BORDER)
+# 6. EXPORT EXCEL 
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel </div>", unsafe_allow_html=True)
