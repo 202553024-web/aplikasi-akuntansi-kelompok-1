@@ -6,7 +6,7 @@ import io
 import calendar
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, PatternFill
 
 # ============================
 # CONFIG TAMPAK APLIKASI
@@ -78,12 +78,12 @@ def neraca_saldo(df):
     return grouped
 
 # ============================
-# FUNGSI EXPORT EXCEL (DIPINDAH KE SINI)
+# FUNGSI EXPORT EXCEL (REVISI SESUAI GAMBAR)
 # ============================
 def export_excel_multi(df):
     import io, calendar
     from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment
+    from openpyxl.styles import Font, Alignment, PatternFill
     from openpyxl.utils import get_column_letter
     from openpyxl.utils.dataframe import dataframe_to_rows
 
@@ -98,6 +98,10 @@ def export_excel_multi(df):
     df["Tahun"] = df["Tanggal"].dt.year
     df_sorted = df.sort_values("Tanggal")
 
+    # Warna untuk header
+    green_fill = PatternFill(start_color="92D050", end_color="92D050", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+
     current_row = 1
     tahun_sekarang = None
 
@@ -105,56 +109,64 @@ def export_excel_multi(df):
     # HALAMAN LAPORAN KEUANGAN
     # ============================
     for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
-        # Header Tahun
+        # Header Tahun (Hijau)
         if tahun != tahun_sekarang:
             ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-            cell = ws_main.cell(row=current_row, column=1, value=f"Tahun {tahun}")
+            cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
             cell.font = Font(bold=True, size=14)
-            current_row += 2
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.fill = green_fill
+            current_row += 1
             tahun_sekarang = tahun
 
-        # Header Bulan
+        # Header Bulan (Kuning)
         nama_bulan = calendar.month_name[bulan].capitalize()
         ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
         cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
         cell.font = Font(bold=True, size=12)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.fill = yellow_fill
         current_row += 1
 
-        # Header Kolom
+        # Header Kolom (Kuning)
         headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
         for col_num, header in enumerate(headers, start=1):
             cell = ws_main.cell(row=current_row, column=col_num, value=header)
             cell.font = Font(bold=True)
-            cell.alignment = Alignment(horizontal="center")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.fill = yellow_fill
         current_row += 1
         
         # Data Transaksi
-        for r in dataframe_to_rows(grup[headers], index=False, header=False):
+        for r in dataframe_to_rows(grup[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False):
             for c_idx, val in enumerate(r, start=1):
                 cell = ws_main.cell(row=current_row, column=c_idx)
-                if c_idx in [4, 5]:
-                    val = int(val) if pd.notna(val) else 0
-                    cell.value = val
-                    cell.alignment = Alignment(horizontal="right")
-                    cell.number_format = '"Rp"#,##0'
+                if c_idx == 1:  # Tanggal
+                    if isinstance(val, datetime):
+                        cell.value = val.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        cell.value = val
+                    cell.alignment = Alignment(horizontal="left")
+                elif c_idx in [4, 5]:  # Debit dan Kredit
+                    val = int(val) if pd.notna(val) and val != 0 else 0
+                    if val == 0:
+                        cell.value = "Rp                    -"
+                        cell.alignment = Alignment(horizontal="right")
+                    else:
+                        cell.value = val
+                        cell.alignment = Alignment(horizontal="right")
+                        cell.number_format = '"Rp"#,##0'
                 else:
                     cell.value = val
+                    cell.alignment = Alignment(horizontal="left")
             current_row += 1
-        current_row += 2
 
-    # Set Lebar Kolom Aman (FIX MERGED CELL)
-    for col_idx in range(1, 6):
-        col_letter = get_column_letter(col_idx)
-        max_length = 0
-        for cell in ws_main[col_letter]:
-            if cell.value:
-                try:
-                    length = len(str(cell.value))
-                    if length > max_length:
-                        max_length = length
-                except:
-                    pass
-        ws_main.column_dimensions[col_letter].width = max_length + 2
+    # Set Lebar Kolom
+    ws_main.column_dimensions['A'].width = 20
+    ws_main.column_dimensions['B'].width = 15
+    ws_main.column_dimensions['C'].width = 20
+    ws_main.column_dimensions['D'].width = 18
+    ws_main.column_dimensions['E'].width = 18
 
 
     # ============================
@@ -271,157 +283,3 @@ if menu == "Input Transaksi":
 
     if len(st.session_state.transaksi) > 0:
         df = pd.DataFrame(st.session_state.transaksi)
-        df_display = df.copy()
-        df_display["Debit"] = df_display["Debit"].apply(to_rp)
-        df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
-        st.dataframe(df_display, use_container_width=True)
-
-        idx = st.number_input("Hapus transaksi index", 0, len(df)-1)
-        if st.button("Hapus"):
-            hapus_transaksi(idx)
-            st.warning("Transaksi berhasil dihapus!")
-    else:
-        st.info("Belum ada transaksi.")
-
-# ============================
-# 2. JURNAL UMUM
-# ============================
-elif menu == "Jurnal Umum":
-    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
-        df["Bulan"] = df["Tanggal"].dt.month
-        df["Tahun"] = df["Tanggal"].dt.year
-
-        tahun_sekarang = None
-        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
-            # Header Tahun
-            if tahun != tahun_sekarang:
-                st.markdown(f"### 📅 Tahun {tahun}")
-                tahun_sekarang = tahun
-
-            # Header Bulan
-            nama_bulan = calendar.month_name[bulan].capitalize()
-            st.markdown(f"#### 📌 Bulan {nama_bulan}")
-
-            df_show = grup.copy()
-            df_show["Debit"] = df_show["Debit"].apply(to_rp)
-            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
-
-            st.dataframe(df_show[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], use_container_width=True)
-
-# ============================
-# 3. BUKU BESAR
-# ============================
-elif menu == "Buku Besar":
-    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
-        df["Bulan"] = df["Tanggal"].dt.month
-        df["Tahun"] = df["Tanggal"].dt.year
-
-        tahun_sekarang = None
-        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
-
-            # Header Tahun
-            if tahun != tahun_sekarang:
-                st.markdown(f"### 📅 Tahun {tahun}")
-                tahun_sekarang = tahun
-
-            nama_bulan = calendar.month_name[bulan].capitalize()
-            st.markdown(f"#### 📌 Bulan {nama_bulan}")
-
-            # Akun per bulan
-            buku = buku_besar(grup)
-            for akun, data in buku.items():
-                st.markdown(f"##### ▶ {akun}")
-
-                df_show = data.copy()
-                df_show["Debit"] = df_show["Debit"].apply(to_rp)
-                df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
-                df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
-
-                st.dataframe(df_show[["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]], use_container_width=True)
-                st.write("---")
-
-# ============================
-# 4. NERACA SALDO
-# ============================
-elif menu == "Neraca Saldo":
-    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
-        df["Bulan"] = df["Tanggal"].dt.month
-        df["Tahun"] = df["Tanggal"].dt.year
-
-        tahun_sekarang = None
-        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
-            
-            # Header Tahun
-            if tahun != tahun_sekarang:
-                st.markdown(f"### 📅 Tahun {tahun}")
-                tahun_sekarang = tahun
-
-            nama_bulan = calendar.month_name[bulan].capitalize()
-            st.markdown(f"#### 📌 Bulan {nama_bulan}")
-
-            neraca = grup.groupby("Akun")[["Debit", "Kredit"]].sum()
-            neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
-
-            df_show = neraca.copy()
-            df_show["Debit"] = df_show["Debit"].apply(to_rp)
-            df_show["Kredit"] = df_show["Kredit"].apply(to_rp)
-            df_show["Saldo"] = df_show["Saldo"].apply(to_rp)
-
-            st.dataframe(df_show, use_container_width=True)
-            st.write("---")
-
-# ============================
-# 5. GRAFIK
-# ============================
-elif menu == "Grafik":
-    st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada data.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        chart = alt.Chart(df).mark_bar().encode(
-            x="Akun",
-            y="Debit",
-            color="Akun"
-        ).properties(
-            title="Grafik Jumlah Debit per Akun",
-            width=700
-        )
-        st.altair_chart(chart, use_container_width=True)
-
-# ============================
-# 6. EXPORT EXCEL (MULTI SHEET TANPA BORDER)
-# ============================
-elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
-
-    if len(st.session_state.transaksi) == 0:
-        st.info("Belum ada transaksi untuk diekspor.")
-    else:
-        df = pd.DataFrame(st.session_state.transaksi)
-        excel_file = export_excel_multi(df)
-        st.download_button(
-            label="📥 Export ke Excel (Lengkap)",
-            data=excel_file,
-            file_name="laporan_akuntansi_lengkap.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
