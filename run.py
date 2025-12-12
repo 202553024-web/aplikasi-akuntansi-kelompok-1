@@ -128,13 +128,12 @@ def export_excel_multi(df):
         cell.fill = yellow_fill
         current_row += 1
 
-        # Header Kolom (Kuning)
+        # Header Kolom (Tanpa Warna, Hanya Bold)
         headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
         for col_num, header in enumerate(headers, start=1):
             cell = ws_main.cell(row=current_row, column=col_num, value=header)
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = yellow_fill
         current_row += 1
         
         # Data Transaksi
@@ -186,6 +185,20 @@ def export_excel_multi(df):
                 cell.number_format = '"Rp"#,##0'
             else:
                 cell.value = val
+    
+    # Auto-fit kolom Jurnal Umum
+    for col_idx in range(1, 6):
+        col_letter = get_column_letter(col_idx)
+        max_length = 0
+        for cell in ws_jurnal[col_letter]:
+            if cell.value:
+                try:
+                    length = len(str(cell.value))
+                    if length > max_length:
+                        max_length = length
+                except:
+                    pass
+        ws_jurnal.column_dimensions[col_letter].width = max_length + 2
 
 
     # ============================
@@ -220,6 +233,20 @@ def export_excel_multi(df):
             row_bb += 1
         row_bb += 2
 
+    # Auto-fit kolom Buku Besar
+    for col_idx in range(1, 6):
+        col_letter = get_column_letter(col_idx)
+        max_length = 0
+        for cell in ws_bb[col_letter]:
+            if cell.value:
+                try:
+                    length = len(str(cell.value))
+                    if length > max_length:
+                        max_length = length
+                except:
+                    pass
+        ws_bb.column_dimensions[col_letter].width = max_length + 2
+
 
     # ============================
     # SHEET NERACA SALDO
@@ -241,6 +268,20 @@ def export_excel_multi(df):
                 cell.number_format = '"Rp"#,##0'
             else:
                 cell.value = val
+
+    # Auto-fit kolom Neraca Saldo
+    for col_idx in range(1, 5):
+        col_letter = get_column_letter(col_idx)
+        max_length = 0
+        for cell in ws_ns[col_letter]:
+            if cell.value:
+                try:
+                    length = len(str(cell.value))
+                    if length > max_length:
+                        max_length = length
+                except:
+                    pass
+        ws_ns.column_dimensions[col_letter].width = max_length + 2
 
     wb.save(output)
     output.seek(0)
@@ -424,7 +465,7 @@ elif menu == "Grafik":
 # 6. EXPORT EXCEL (MULTI SHEET TANPA BORDER)
 # ============================
 elif menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>📤 Export Excel </div>", unsafe_allow_html=True)
 
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
@@ -432,8 +473,8 @@ elif menu == "Export Excel":
         df = pd.DataFrame(st.session_state.transaksi)
         excel_file = export_excel_multi(df)
         st.download_button(
-            label="📥 Export ke Excel (Lengkap)",
+            label="📥 Export ke Excel",
             data=excel_file,
-            file_name="laporan_akuntansi_lengkap.xlsx",
+            file_name="Laporan_Akuntansi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
