@@ -627,10 +627,10 @@ elif menu == "📥 Import Excel":
 
 elif menu == "📤 Export Excel":
     df = pd.DataFrame(st.session_state.transaksi)
-    
+
     if "Tahun" not in df.columns:
         df["Tahun"] = df["Tanggal"].dt.year
-    
+
     if "Bulan" not in df.columns:
         df["Bulan"] = df["Tanggal"].dt.month
 
@@ -638,73 +638,19 @@ elif menu == "📤 Export Excel":
     if total_transaksi == 0:
         st.info("Belum ada transaksi untuk diexport.")
     else:
-        df = pd.DataFrame(st.session_state.transaksi)
         st.markdown(f"Total transaksi: {total_transaksi}")
         try:
             excel_data = export_excel_multi(df)
-            
-    for tahun, df_tahun in df.groupby("Tahun"):
-                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-                tcell = ws.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
-                tcell.font = Font(bold=True, size=14)
-                tcell.fill = year_fill
-                tcell.alignment = Alignment(horizontal="center", vertical="center")
-    for col in range(1, 6):
-        ws.cell(row=current_row, column=col).border = thin_border
-    current_row += 1
 
-    # --- LOOP BULAN ---
-    for bulan, df_bulan in df_tahun.groupby("Bulan"):
-        nama_bulan = calendar.month_name[bulan]
-        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-        bcell = ws.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
-        bcell.font = font_bold
-        bcell.fill = title_fill
-        bcell.alignment = Alignment(horizontal="center", vertical="center")
-    for col in range(1, 6):
-            ws.cell(row=current_row, column=col).border = thin_border
-        current_row += 1
-
-        # --- HEADER ---
-        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-        for idx, val in enumerate(headers, start=1):
-            hcell = ws.cell(row=current_row, column=idx, value=val)
-            hcell.font = font_white_bold
-            hcell.fill = header_fill
-            hcell.alignment = Alignment(horizontal="center", vertical="center")
-            hcell.border = thin_border
-        current_row += 1
-
-        # --- DATA ---
-        if df_bulan.empty:
-            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-            ws.cell(row=current_row, column=1, value="Tidak ada transaksi").alignment = Alignment(horizontal="center")
-            current_row += 2
-        else:
-            for _, row in df_bulan.iterrows():
-                ws.cell(row=current_row, column=1, value=row["Tanggal"].strftime("%Y-%m-%d %H:%M:%S"))
-                ws.cell(row=current_row, column=2, value=row["Akun"])
-                ws.cell(row=current_row, column=3, value=row["Keterangan"])
-                ws.cell(row=current_row, column=4, value=row["Debit"])
-                ws.cell(row=current_row, column=5, value=row["Kredit"])
-                for col in range(1, 6):
-                    ws.cell(row=current_row, column=col).border = thin_border
-                current_row += 1
-
-            # --- TOTAL PER BULAN ---
-            total_debit = df_bulan["Debit"].sum()
-            total_kredit = df_bulan["Kredit"].sum()
-            ws.cell(row=current_row, column=3, value="TOTAL").font = Font(bold=True)
-            ws.cell(row=current_row, column=4, value=total_debit).font = Font(bold=True)
-            ws.cell(row=current_row, column=5, value=total_kredit).font = Font(bold=True)
-            for col in range(3, 6):
-                ws.cell(row=current_row, column=col).border = thin_border
-            current_row += 2
-
-            st.download_button("Download Laporan Akuntansi.xlsx", excel_data,
-                                file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            # --- DOWNLOAD BUTTON ---
+            st.download_button(
+                "Download Laporan Akuntansi.xlsx",
+                excel_data,
+                file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
             st.success("File siap diunduh!")
+
         except Exception as e:
             st.error(f"Error saat generate file Excel: {e}")
 
@@ -718,6 +664,7 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
