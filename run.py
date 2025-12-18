@@ -421,16 +421,15 @@ with col1:
         "📅 Tanggal & Waktu Transaksi",
         datetime.now()
 )
-            bulan = st.selectbox(
-    "🗓️ Bulan Periode",
-    list(calendar.month_name)[1:]
+    bulan = st.selectbox(
+        "🗓️ Bulan Periode",
+        list(calendar.month_name)[1:]
 )
-
-tahun = st.number_input(
-    "📆 Tahun Periode",
-    min_value=2000,
-    max_value=2100,
-    value=datetime.now().year
+    tahun = st.number_input(
+        "📆 Tahun Periode",
+        min_value=2000,
+        max_value=2100,
+        value=datetime.now().year
 )
     akun = st.selectbox("🏦 Pilih Akun", 
                         ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
@@ -745,6 +744,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
