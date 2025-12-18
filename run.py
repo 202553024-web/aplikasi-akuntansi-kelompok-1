@@ -246,38 +246,39 @@ def export_excel_multi(df):
 
     for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
 
-        if tahun != tahun_sekarang:
-            ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-            cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
-            cell.font = Font(bold=True, size=14)
-            cell.alignment = Alignment(horizontal="center")
-            cell.fill = year_fill
-            current_row += 1
-            tahun_sekarang = tahun
+    # =====================
+    # ISI DATA TRANSAKSI
+    # =====================
+for r in dataframe_to_rows(grup[headers], index=False, header=False):
+    for col, val in enumerate(r, start=1):
+        cell = ws_main.cell(row=current_row, column=col, value=val)
+        cell.border = thin_border
+    current_row += 1
 
-        nama_bulan = str(bulan)
-        ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-        cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center")
-        cell.fill = title_fill
-        current_row += 1
+# =====================
+# TOTAL PER BULAN
+# =====================
+total_debit_bulan = grup["Debit"].sum()
+total_kredit_bulan = grup["Kredit"].sum()
+saldo_bulan = total_debit_bulan - total_kredit_bulan
 
-        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-        for col, h in enumerate(headers, start=1):
-            c = ws_main.cell(row=current_row, column=col, value=h)
-            c.font = Font(bold=True, color="FFFFFF")
-            c.fill = header_fill
-            c.border = thin_border
-        current_row += 1
+ws_main.cell(row=current_row, column=3, value="TOTAL BULAN INI").font = Font(bold=True)
+ws_main.cell(row=current_row, column=4, value=total_debit_bulan).font = Font(bold=True)
+ws_main.cell(row=current_row, column=5, value=total_kredit_bulan).font = Font(bold=True)
 
-        for r in dataframe_to_rows(grup[headers], index=False, header=False):
-            for col, val in enumerate(r, start=1):
-                cell = ws_main.cell(row=current_row, column=col, value=val)
-                cell.border = thin_border
-            current_row += 1
+for col in [3, 4, 5]:
+    ws_main.cell(row=current_row, column=col).border = thin_border
+    ws_main.cell(row=current_row, column=col).fill = PatternFill("solid", fgColor="FFF2CC")
 
-        current_row += 1
+current_row += 1
+
+ws_main.cell(row=current_row, column=3, value="SALDO BULAN INI").font = Font(bold=True)
+ws_main.cell(row=current_row, column=4, value=saldo_bulan).font = Font(bold=True)
+
+ws_main.cell(row=current_row, column=4).border = thin_border
+ws_main.cell(row=current_row, column=4).fill = PatternFill("solid", fgColor="E2EFDA")
+
+current_row += 2
 
     for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
         ws_main.column_dimensions[col].width = w
@@ -783,6 +784,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
