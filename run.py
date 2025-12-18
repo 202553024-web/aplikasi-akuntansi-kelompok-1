@@ -164,13 +164,15 @@ beban_akun = ["Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"]
 # ============================
 # FUNGSI AKUNTANSI
 # ============================
-def tambah_transaksi(tgl, akun, ket, debit, kredit):
+def tambah_transaksi(tgl, akun, ket, debit, kredit, bulan, tahun):
     st.session_state.transaksi.append({
         "Tanggal": tgl,
         "Akun": akun,
         "Keterangan": ket,
         "Debit": int(debit),
-        "Kredit": int(kredit)
+        "Kredit": int(kredit),
+        "Bulan": bulan,
+        "Tahun": int(tahun)
     })
 
 def hapus_transaksi(idx):
@@ -228,10 +230,9 @@ def export_excel_multi(df):
     ws_main = wb.active
     ws_main.title = "Laporan Keuangan"
 
-    df["Tanggal"] = pd.to_datetime(df["Tanggal"])
-    df["Bulan"] = df["Tanggal"].dt.month
-    df["Tahun"] = df["Tanggal"].dt.year
-    df_sorted = df.sort_values("Tanggal")
+df_sorted = df.sort_values(
+    ["Tahun", "Bulan", "Tanggal"]
+)
 
     current_row = 1
     tahun_sekarang = None
@@ -336,7 +337,7 @@ def export_excel_multi(df):
     # SHEET 3: BUKU BESAR
     # ============================
     ws_bb = wb.create_sheet("Buku Besar")
-    bb = buku_besar(df)
+    bb = buku_besar(df_bulan)
     current_row_bb = 1
     
     for akun, data in bb.items():
@@ -375,7 +376,7 @@ def export_excel_multi(df):
     # SHEET 4: NERACA SALDO
     # ============================
     ws_ns = wb.create_sheet("Neraca Saldo")
-    ns = neraca_saldo(df)
+    ns = neraca_saldo(df_bulan)
     ws_ns.cell(row=1, column=1, value="Neraca Saldo").font = Font(bold=True, size=14)
     ws_ns.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws_ns.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
@@ -410,7 +411,7 @@ def export_excel_multi(df):
     # SHEET 5: LAPORAN LABA RUGI
     # ============================
     ws_lr = wb.create_sheet("Laporan Laba Rugi")
-    lr = laporan_laba_rugi(df)
+    lr = laporan_laba_rugi(df_bulan)
     ws_lr.cell(row=1, column=1, value="Laporan Laba Rugi").font = Font(bold=True, size=14)
     ws_lr.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws_lr.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
@@ -454,7 +455,7 @@ st.sidebar.markdown("### 📋 Menu Navigasi")
 menu = st.sidebar.radio(
     "",
     ["🏠 Dashboard", "📝 Input Transaksi", "📋 Lihat Transaksi", "📖 Buku Besar", 
-     "⚖️ Neraca Saldo", "💰 Laporan Laba Rugi", "📈 Grafik", "📤 Export Excel"],
+     "⚖️ Neraca Saldo", "💰 Laporan Laba Rugi", "📈 Grafik", "📤 Export Excel", "📥 Import Excel"],
     label_visibility="collapsed"
 )
 
@@ -538,7 +539,21 @@ elif menu == "📝 Input Transaksi":
         col1, col2 = st.columns(2)
         
         with col1:
-            tgl = st.date_input("📅 Tanggal Transaksi", datetime.now())
+            tgl = st.datetime_input(
+    "📅 Tanggal & Waktu Transaksi",
+    datetime.now()
+)
+            bulan = st.selectbox(
+    "🗓️ Bulan Periode",
+    list(calendar.month_name)[1:]
+)
+
+tahun = st.number_input(
+    "📆 Tahun Periode",
+    min_value=2000,
+    max_value=2100,
+    value=datetime.now().year
+)
             akun = st.selectbox("🏦 Pilih Akun", 
                 ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
                  "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
@@ -562,7 +577,10 @@ elif menu == "📝 Input Transaksi":
             elif ket.strip() == "":
                 st.error("❌ Keterangan harus diisi!")
             else:
-                tambah_transaksi(tgl, akun, ket, debit, kredit)
+                tambah_transaksi(
+    tgl, akun, ket, debit, kredit,
+    bulan, tahun
+)
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
                 st.rerun()
@@ -810,6 +828,37 @@ elif menu == "📤 Export Excel":
         except Exception as e:
             st.error(f"❌ Terjadi kesalahan saat membuat file Excel: {str(e)}")
 
+# ============================
+# 8. IMPORT EXCEL
+# ============================
+elif menu == "📥 Import Excel":
+    st.markdown("<div class='subtitle'>📥 Import Transaksi dari Excel</div>", unsafe_allow_html=True)
+
+    file = st.file_uploader("Upload file Excel", type=["xlsx"])
+
+    if file:
+        df_import = pd.read_excel(file)
+
+        kolom = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Bulan", "Tahun"]
+
+        if not all(k in df_import.columns for k in kolom):
+            st.error("❌ Kolom Excel tidak sesuai format")
+        else:
+            for _, r in df_import.iterrows():
+                tambah_transaksi(
+                    pd.to_datetime(r["Tanggal"]),
+                    r["Akun"],
+                    r["Keterangan"],
+                    r["Debit"],
+                    r["Kredit"],
+                    r["Bulan"],
+                    r["Tahun"]
+                )
+
+            st.success("✅ Import berhasil")
+            st.rerun()
+
+
 # Footer
 st.markdown("---")
 st.markdown("""
@@ -818,4 +867,5 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
