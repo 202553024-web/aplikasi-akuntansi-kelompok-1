@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from datetime import datetime
+import streamlit.components.v1 as components
 import io
 import calendar
 from openpyxl import Workbook
@@ -154,6 +155,12 @@ def to_rp(n):
         return "Rp {:,}".format(int(n)).replace(",", ".")
     except:
         return "Rp 0"
+
+# ============================
+# AMBIL JAM DARI DEVICE USER
+# ============================
+def get_device_datetime():
+    return datetime.now().astimezone()
 
 # ============================
 # KLASIFIKASI AKUN
@@ -416,9 +423,12 @@ elif menu == "📝 Input Transaksi":
         col1, col2 = st.columns(2)
 
         with col1:
-            tgl = st.datetime_input(
+            tgl = get_device_datetime()
+
+            st.text_input(
                 "📅 Tanggal & Waktu Transaksi",
-                datetime.now()
+                value=tgl.strftime("%Y/%m/%d, %H:%M"),
+                disabled=True
             )
 
             bulan = st.selectbox(
@@ -756,6 +766,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
