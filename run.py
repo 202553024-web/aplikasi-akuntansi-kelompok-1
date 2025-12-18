@@ -13,7 +13,7 @@ from openpyxl.utils import get_column_letter
 # CONFIG TAMPAK APLIKASI
 # ============================
 st.set_page_config(
-    page_title="Aplikasi Akuntansi Profesional",
+    page_title="Aplikasi Akuntansi Keuangan",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -672,3 +672,4 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
