@@ -437,17 +437,13 @@ elif menu == "📝 Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True)
 
     with st.form("form_transaksi", clear_on_submit=True):
-        tz = pytz.timezone('Asia/Jakarta')
-        
-        col1, col2 = st.columns(2)
-    with col1:
+        # Pilih tahun bebas
         tahun = st.selectbox("📆 Tahun", list(range(2020, datetime.now().year + 2)), index=5)
-    with col2:
-        bulan = st.selectbox("🗓️ Bulan", list(range(1, 13)),
-                             format_func=lambda x: calendar.month_name[x])
+
+        # Pilih tanggal (tanpa harus pilih bulan lagi)
         tanggal = st.date_input(
             "📅 Tanggal Transaksi",
-            datetime(tahun, bulan, 1).date()
+            value=datetime(tahun, 1, 1).date()
         )
 
         akun = st.selectbox("🏦 Pilih Akun", [
@@ -457,18 +453,20 @@ elif menu == "📝 Input Transaksi":
         debit = st.number_input("Debit (Rp)", min_value=0, step=10000, format="%d")
         kredit = st.number_input("Kredit (Rp)", min_value=0, step=10000, format="%d")
         submitted = st.form_submit_button("✅ Simpan Transaksi")
+
         if submitted:
             if debit == 0 and kredit == 0:
                 st.error("❌ Debit atau Kredit harus diisi!")
             elif not ket.strip():
                 st.error("❌ Keterangan harus diisi!")
             else:
-                waktu_device = datetime.now(tz).time()
-                tgl_waktu = datetime.combine(tgl_input, waktu_device)
+                # Simpan tanggal lengkap dengan tahun, bulan, hari
+                tgl_waktu = datetime.combine(tanggal, datetime.now().time())
+
                 tambah_transaksi({
                     "Tanggal": tgl_waktu,
-                    "Tahun": tahun,
-                    "Bulan": bulan,
+                    "Tahun": tgl_waktu.year,
+                    "Bulan": tgl_waktu.month,
                     "Akun": akun,
                     "Keterangan": ket,
                     "Debit": int(debit),
@@ -477,6 +475,7 @@ elif menu == "📝 Input Transaksi":
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
                 st.rerun()
+
 
 elif menu == "📋 Lihat Transaksi":
     st.markdown("<div class='subtitle'>📋 Daftar Semua Transaksi</div>", unsafe_allow_html=True)
@@ -664,6 +663,7 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
