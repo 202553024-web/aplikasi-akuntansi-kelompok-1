@@ -432,10 +432,10 @@ tahun = st.number_input(
     max_value=2100,
     value=datetime.now().year
 )
-            akun = st.selectbox("🏦 Pilih Akun", 
-                ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
-                 "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
-            ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
+        akun = st.selectbox("🏦 Pilih Akun", 
+            ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
+             "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
+        ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
         
         with col2:
             st.markdown("#### 💰 Jumlah Transaksi")
