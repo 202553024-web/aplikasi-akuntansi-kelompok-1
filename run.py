@@ -1,16 +1,15 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
-from datetime import datetime
 import pytz
-import io
+from datetime import datetime
 import calendar
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+import io
 
-# ===========================
+# =======================
 # Styling tema pantai
-# ===========================
+# =======================
 st.set_page_config(page_title="Aplikasi Akuntansi Keuangan", page_icon="💰", layout="wide")
 
 st.markdown("""
@@ -68,9 +67,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ===========================
+# =======================
 # Header
-# ===========================
+# =======================
 st.markdown("""
 <div class='main-title'>
     <h1>💰 Aplikasi Akuntansi Keuangan</h1>
@@ -78,15 +77,15 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ===========================
+# =======================
 # Session state untuk simpan transaksi
-# ===========================
+# =======================
 if "transaksi" not in st.session_state:
     st.session_state.transaksi = []
 
-# ===========================
-# Fungsi format rupiah sesuai contoh
-# ===========================
+# =======================
+# Fungsi format rupiah
+# =======================
 def format_rupiah_angka(n):
     if n == 0 or n is None:
         return "Rp -"
@@ -104,9 +103,9 @@ def format_tanggal(dt):
             return dt
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-# ===========================
+# =======================
 # Fungsi-fungsi akun
-# ===========================
+# =======================
 pendapatan_akun = ["Pendapatan Jasa", "Pendapatan Lainnya"]
 beban_akun = ["Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"]
 
@@ -140,9 +139,9 @@ def laporan_laba_rugi(df):
         "Laba/Rugi": laba_rugi
     }
 
-# ===========================
-# Fungsi export excel lengkap dan sesuai template
-# ===========================
+# =======================
+# Fungsi export excel
+# =======================
 def export_excel_multi(df):
     output = io.BytesIO()
     wb = Workbook()
@@ -375,9 +374,9 @@ def export_excel_multi(df):
     output.seek(0)
     return output.getvalue()
 
-# ===========================
+# =======================
 # Menu Navigasi Streamlit
-# ===========================
+# =======================
 st.sidebar.markdown("### 📋 Menu Navigasi")
 menu = st.sidebar.radio("", [
     "🏠 Dashboard",
@@ -453,7 +452,7 @@ elif menu == "📝 Input Transaksi":
 
         akun = st.selectbox("🏦 Pilih Akun", [
             "Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
-            "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
+            "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya", "Utang"])
         ket = st.text_input("📝 Keterangan", "")
         debit = st.number_input("Debit (Rp)", min_value=0, step=10000, format="%d")
         kredit = st.number_input("Kredit (Rp)", min_value=0, step=10000, format="%d")
@@ -587,95 +586,3 @@ elif menu == "📈 Grafik":
                 tooltip=["Akun", "Tipe", "Jumlah"]
             ).properties(title="Perbandingan Debit vs Kredit per Akun", height=400)
             st.altair_chart(chart, use_container_width=True)
-
-elif menu == "📥 Import Excel":
-    st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Pilih file Excel", type=["xlsx"])
-    if uploaded_file:
-        df_import = pd.read_excel(uploaded_file)
-        df_import.columns = df_import.columns.str.strip()  # bersihkan nama kolom
-        expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-    
-    if not all(col in df_import.columns for col in expected_cols):
-        st.error(f"File harus ada kolom: {expected_cols}")
-    else:
-        df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors="coerce")
-        df_import = df_import.dropna(subset=["Tanggal"])
-
-        # bersihkan angka
-        for col in ["Debit", "Kredit"]:
-            df_import[col] = (
-                df_import[col].astype(str)
-                .str.replace("Rp", "")
-                .str.replace(".", "")
-                .str.replace(",", ".")
-            )
-            df_import[col] = pd.to_numeric(df_import[col], errors="coerce").fillna(0).astype(int)
-
-        # tambah Tahun & Bulan
-        df_import["Tahun"] = df_import["Tanggal"].dt.year
-        df_import["Bulan"] = df_import["Tanggal"].dt.month
-
-        st.dataframe(df_import.head())
-
-        if st.button("Tambahkan semua transaksi dari file"):
-            for _, row in df_import.iterrows():
-                tambah_transaksi(
-                    row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"]
-                )
-            st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
-            st.rerun()
-
-elif menu == "📤 Export Excel":
-    df = pd.DataFrame(st.session_state.transaksi)
-
-    st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
-
-    if len(df) == 0:
-        st.info("Belum ada transaksi untuk diexport.")
-    else:
-        # Filter periode sebelum export
-        periode_filter = st.text_input("Filter Periode (YYYY-MM)", value=datetime.now().strftime("%Y-%m"))
-        try:
-            tahun_filter, bulan_filter = map(int, periode_filter.split("-"))
-            df_filtered = df[(df["Tahun"] == tahun_filter) & (df["Bulan"] == bulan_filter)]
-        except:
-            st.warning("Format periode harus YYYY-MM, misal 2025-12")
-            st.stop()
-
-        if df_filtered.empty:
-            st.info("Tidak ada transaksi di periode ini.")
-        else:
-            total_debit = df_filtered["Debit"].sum()
-            total_kredit = df_filtered["Kredit"].sum()
-            saldo = total_debit - total_kredit
-            st.info(f"Total Debit: {format_rupiah_angka(total_debit)} | Total Kredit: {format_rupiah_angka(total_kredit)} | Saldo: {format_rupiah_angka(saldo)}")
-
-            try:
-                excel_data = export_excel_multi(df_filtered)  # gunakan fungsi export_excel_multi yang sudah ada
-                st.download_button(
-                    "Download Laporan Akuntansi.xlsx",
-                    excel_data,
-                    file_name=f"laporan_akuntansi_{periode_filter.replace('-', '')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                st.success("File siap diunduh!")
-            except Exception as e:
-                st.error(f"Error saat generate file Excel: {e}")
-
-# ===================
-# Footer
-# ===================
-st.markdown("---")
-st.markdown("""
-<div style='text-align:center; color:#888; padding:20px;'>
-    <p>💰 <strong>Aplikasi Akuntansi Profesional</strong></p>
-    <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
-</div>
-""", unsafe_allow_html=True)
-
-
-
-
-
-
