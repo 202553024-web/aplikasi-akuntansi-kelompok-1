@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 import pytz
-import io
+from datetime import datetime
 import calendar
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-import matplotlib.pyplot as plt
+import io
 
 # =======================
 # Styling tema pantai
@@ -374,6 +373,7 @@ def export_excel_multi(df):
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
 # =======================
 # Menu Navigasi Streamlit
 # =======================
@@ -386,8 +386,8 @@ menu = st.sidebar.radio("", [
     "⚖️ Neraca Saldo",
     "💰 Laporan Laba Rugi",
     "📈 Grafik",
-    "📥 Import Excel",   # Letakkan di sini
-    "📤 Export Excel",   # Letakkan di sini
+    "📥 Import Excel",
+    "📤 Export Excel",
 ], label_visibility="collapsed")
 
 # Sidebar Statistik
@@ -558,33 +558,44 @@ elif menu == "📈 Grafik":
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        # Grafik menggunakan matplotlib
-        def create_bar_chart(df):
-            # Kelompokkan data berdasarkan akun
+        tab1, tab2, tab3 = st.tabs(["📊 Debit per Akun", "📊 Kredit per Akun", "📊 Perbandingan"])
+        with tab1:
+            chart = alt.Chart(df).mark_bar().encode(
+                x=alt.X("Akun:N", title="Akun"),
+                y=alt.Y("Debit:Q", title="Debit (Rp)"),
+                color=alt.Color("Akun:N", legend=None),
+                tooltip=["Akun", "Debit"]
+            ).properties(title="Grafik Total Debit per Akun", height=400)
+            st.altair_chart(chart, use_container_width=True)
+        with tab2:
+            chart = alt.Chart(df).mark_bar().encode(
+                x=alt.X("Akun:N", title="Akun"),
+                y=alt.Y("Kredit:Q", title="Kredit (Rp)"),
+                color=alt.Color("Akun:N", legend=None),
+                tooltip=["Akun", "Kredit"]
+            ).properties(title="Grafik Total Kredit per Akun", height=400)
+            st.altair_chart(chart, use_container_width=True)
+        with tab3:
             df_grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
+            df_melt = df_grouped.melt(id_vars="Akun", value_vars=["Debit", "Kredit"], var_name="Tipe", value_name="Jumlah")
+            chart = alt.Chart(df_melt).mark_bar().encode(
+                x=alt.X("Akun:N", title="Akun"),
+                y=alt.Y("Jumlah:Q", title="Jumlah (Rp)"),
+                color="Tipe:N",
+                xOffset="Tipe:N",
+                tooltip=["Akun", "Tipe", "Jumlah"]
+            ).properties(title="Perbandingan Debit vs Kredit per Akun", height=400)
+            st.altair_chart(chart, use_container_width=True)
 
-            # Membuat plot
-            fig, ax = plt.subplots(figsize=(10, 6))
-            df_grouped.plot(kind='bar', x='Akun', y=['Debit', 'Kredit'], ax=ax, color=['#56ccf2', '#ff7f7f'])
-            
-            # Menambahkan label dan judul
-            ax.set_title('Total Debit dan Kredit per Akun', fontsize=16)
-            ax.set_xlabel('Akun', fontsize=12)
-            ax.set_ylabel('Jumlah (Rp)', fontsize=12)
-            plt.xticks(rotation=45, ha="right")
-            plt.tight_layout()
-
-# =======================
-# Fungsi untuk Import Excel
-# =======================
+# ===========================
+# Menu untuk Import Excel
+# ===========================
 elif menu == "📥 Import Excel":
     st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Pilih file Excel", type=["xlsx"])
-    
     if uploaded_file:
-        # Membaca file Excel yang diunggah
         df_import = pd.read_excel(uploaded_file)
-        df_import.columns = df_import.columns.str.strip()  # Bersihkan nama kolom
+        df_import.columns = df_import.columns.str.strip()  # bersihkan nama kolom
         expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
     
         if not all(col in df_import.columns for col in expected_cols):
@@ -592,7 +603,7 @@ elif menu == "📥 Import Excel":
         else:
             # Bersihkan format tanggal dan nilai
             df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors="coerce")
-            df_import = df_import.dropna(subset=["Tanggal"])  # Menghapus baris dengan tanggal kosong
+            df_import = df_import.dropna(subset=["Tanggal"])
 
             for col in ["Debit", "Kredit"]:
                 df_import[col] = (
@@ -611,19 +622,21 @@ elif menu == "📥 Import Excel":
 
             if st.button("Tambahkan semua transaksi dari file"):
                 for _, row in df_import.iterrows():
-                    tambah_transaksi({
-                        "Tanggal": row["Tanggal"],
-                        "Akun": row["Akun"],
-                        "Keterangan": row["Keterangan"],
-                        "Debit": row["Debit"],
-                        "Kredit": row["Kredit"]
-                    })
+                    tambah_transaksi(
+                        {
+                            "Tanggal": row["Tanggal"],
+                            "Akun": row["Akun"],
+                            "Keterangan": row["Keterangan"],
+                            "Debit": row["Debit"],
+                            "Kredit": row["Kredit"]
+                        }
+                    )
                 st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
                 st.rerun()
 
-# =======================
-# Fungsi untuk Export Excel
-# =======================
+# ===========================
+# Menu untuk Export Excel
+# ===========================
 elif menu == "📤 Export Excel":
     df = pd.DataFrame(st.session_state.transaksi)
 
@@ -660,9 +673,4 @@ elif menu == "📤 Export Excel":
                 st.success("File siap diunduh!")
             except Exception as e:
                 st.error(f"Error saat generate file Excel: {e}")
-            
-            # Menampilkan grafik
-            plt.show()
 
-        # Menampilkan grafik
-        create_bar_chart(df)
