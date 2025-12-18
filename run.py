@@ -78,8 +78,23 @@ def neraca_saldo(df):
     grouped["Saldo"] = grouped["Debit"] - grouped["Kredit"]
     return grouped
 
+def laporan_laba_rugi(df):
+    # Kategorikan akun
+    pendapatan_akun = [akun for akun in df["Akun"].unique() if akun.startswith("Pendapatan")]
+    beban_akun = [akun for akun in df["Akun"].unique() if akun.startswith("Beban")]
+    
+    total_pendapatan = df[df["Akun"].isin(pendapatan_akun)]["Kredit"].sum() - df[df["Akun"].isin(pendapatan_akun)]["Debit"].sum()
+    total_beban = df[df["Akun"].isin(beban_akun)]["Debit"].sum() - df[df["Akun"].isin(beban_akun)]["Kredit"].sum()
+    laba_bersih = total_pendapatan - total_beban
+    
+    return {
+        "Total Pendapatan": total_pendapatan,
+        "Total Beban": total_beban,
+        "Laba Bersih": laba_bersih
+    }
+
 # ============================
-# FUNGSI EXPORT EXCEL (DIPERBAIKI)
+# FUNGSI EXPORT EXCEL (DIPERBAIKI DENGAN LAPORAN LABA RUGI)
 # ============================
 def export_excel_multi(df):
     import io, calendar
@@ -378,37 +393,47 @@ def export_excel_multi(df):
     neraca = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
     neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
 
-    headers = ["Akun", "Debit", "Kredit", "Saldo"]
-    for col_num, header in enumerate(headers, start=1):
-        cell = ws_ns.cell(row=3, column=col_num, value=header)
+    headers = ["Akun", "Debit", "Kredit    # ============================
+    # SHEET 5: LAPORAN LABA RUGI
+    # ============================
+    ws_lr = wb.create_sheet("Laporan Laba Rugi")
+    
+    # Title
+    ws_lr.merge_cells(start_row=1, start_column=1, end_row=1, end_column=3)
+    title_cell = ws_lr.cell(row=1, column=1, value="Laporan Laba Rugi")
+    title_cell.font = Font(bold=True, size=14)
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    title_cell.fill = year_fill
+    for col in range(1, 4):
+        ws_lr.cell(row=1, column=col).border = thin_border
+    
+    # Data Laporan Laba Rugi
+    laba_rugi = laporan_laba_rugi(df)
+    
+    # Header
+    headers_lr = ["Keterangan", "Jumlah"]
+    for col_num, header in enumerate(headers_lr, start=1):
+        cell = ws_lr.cell(row=3, column=col_num, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = header_fill
         cell.border = thin_border
     
     # Data
-    for i, r in enumerate(dataframe_to_rows(neraca[headers], index=False, header=False), start=4):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws_ns.cell(row=i, column=c_idx)
-            cell.border = thin_border
-            
-            if c_idx >= 2:
-                val = int(val) if pd.notna(val) and val != 0 else 0
-                if val == 0 and c_idx in [2, 3]:
-                    cell.value = "Rp                    -"
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-                else:
-                    cell.value = val
-                    cell.number_format = '"Rp"#,##0.00'
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-            else:
-                cell.value = val
-                cell.alignment = Alignment(horizontal="left", vertical="center")
-
-    ws_ns.column_dimensions['A'].width = 20
-    ws_ns.column_dimensions['B'].width = 20
-    ws_ns.column_dimensions['C'].width = 20
-    ws_ns.column_dimensions['D'].width = 20
+    row_lr = 4
+    for key, value in laba_rugi.items():
+        cell_ket = ws_lr.cell(row=row_lr, column=1, value=key)
+        cell_ket.alignment = Alignment(horizontal="left", vertical="center")
+        cell_ket.border = thin_border
+        
+        cell_val = ws_lr.cell(row=row_lr, column=2, value=value)
+        cell_val.number_format = '"Rp"#,##0.00'
+        cell_val.alignment = Alignment(horizontal="right", vertical="center")
+        cell_val.border = thin_border
+        row_lr += 1
+    
+    ws_lr.column_dimensions['A'].width = 25
+    ws_lr.column_dimensions['B'].width = 20
 
     wb.save(output)
     output.seek(0)
@@ -419,7 +444,7 @@ def export_excel_multi(df):
 # ============================
 menu = st.sidebar.radio(
     "📌 PILIH MENU",
-    ["Input Transaksi", "Jurnal Umum", "Buku Besar", "Neraca Saldo", "Grafik", "Export Excel"]
+    ["Input Transaksi", "Jurnal Umum", "Buku Besar", "Neraca Saldo", "Laporan Laba Rugi", "Grafik", "Export Excel"]
 )
 
 # ============================
@@ -569,7 +594,39 @@ elif menu == "Neraca Saldo":
             st.write("---")
 
 # ============================
-# 5. GRAFIK
+# 5. LAPORAN LABA RUGI
+# ============================
+elif menu == "Laporan Laba Rugi":
+    st.markdown("<div class='subtitle'>📊 Laporan Laba Rugi</div>", unsafe_allow_html=True)
+
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada data.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Bulan"] = df["Tanggal"].dt.month
+        df["Tahun"] = df["Tanggal"].dt.year
+
+        tahun_sekarang = None
+        for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+            
+            # Header Tahun
+            if tahun != tahun_sekarang:
+                st.markdown(f"### 📅 Tahun {tahun}")
+                tahun_sekarang = tahun
+
+            nama_bulan = calendar.month_name[bulan].capitalize()
+            st.markdown(f"#### 📌 Bulan {nama_bulan}")
+
+            laba_rugi = laporan_laba_rugi(grup)
+
+            st.write(f"**Total Pendapatan:** {to_rp(laba_rugi['Total Pendapatan'])}")
+            st.write(f"**Total Beban:** {to_rp(laba_rugi['Total Beban'])}")
+            st.write(f"**Laba Bersih:** {to_rp(laba_rugi['Laba Bersih'])}")
+            st.write("---")
+
+# ============================
+# 6. GRAFIK
 # ============================
 elif menu == "Grafik":
     st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
@@ -589,7 +646,7 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# 6. EXPORT EXCEL (MULTI SHEET)
+# 7. EXPORT EXCEL (MULTI SHEET)
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
