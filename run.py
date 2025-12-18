@@ -237,7 +237,7 @@ df_sorted = df.sort_values(
 current_row = 1
 tahun_sekarang = None
 
-    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
         if tahun != tahun_sekarang:
             ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
             cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
@@ -867,6 +867,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
