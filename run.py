@@ -253,7 +253,7 @@ def export_excel_multi(df):
         for col, val in enumerate(r, start=1):
             cell = ws_main.cell(row=current_row, column=col, value=val)
             cell.border = thin_border
-        current_row += 1
+            current_row += 1
 
     # =====================
     # TOTAL PER BULAN
@@ -784,6 +784,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
