@@ -38,7 +38,7 @@ st.markdown("<div class='title'>📊 Aplikasi Akuntansi</div>", unsafe_allow_htm
 # SESSION DATA
 # ============================
 if "transaksi" not in st.session_state:
-    st.session_state.transaksi = []
+    st.session_state.transaksi = []
 
 # ============================
 # FORMAT RUPIAH
@@ -578,4 +578,5 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
