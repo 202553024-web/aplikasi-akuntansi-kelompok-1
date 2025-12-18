@@ -588,6 +588,7 @@ elif menu == "📈 Grafik":
 
 elif menu == "📥 Import Excel":
     st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Pilih file Excel", type=["xlsx"])
     if uploaded_file:
         df_import = pd.read_excel(uploaded_file)
         df_import.columns = df_import.columns.str.strip()  # bersihkan nama kolom
@@ -628,10 +629,10 @@ elif menu == "📤 Export Excel":
     df = pd.DataFrame(st.session_state.transaksi)
     
     if "Tahun" not in df.columns:
-    df["Tahun"] = df["Tanggal"].dt.year
+        df["Tahun"] = df["Tanggal"].dt.year
     
     if "Bulan" not in df.columns:
-    df["Bulan"] = df["Tanggal"].dt.month
+        df["Bulan"] = df["Tanggal"].dt.month
 
     st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
     if total_transaksi == 0:
@@ -717,4 +718,5 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
