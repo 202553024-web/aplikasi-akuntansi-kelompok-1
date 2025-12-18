@@ -302,30 +302,30 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
         ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center")
         ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
     
-    headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-    for col_num, header in enumerate(headers, start=1):
-        cell = ws_jurnal.cell(row=2, column=col_num, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.fill = header_fill
-        cell.border = thin_border
-    
-    for r_idx, r in enumerate(dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False), start=3):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws_jurnal.cell(row=r_idx, column=c_idx)
+        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+        for col_num, header in enumerate(headers, start=1):
+            cell = ws_jurnal.cell(row=2, column=col_num, value=header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.fill = header_fill
             cell.border = thin_border
-            if c_idx in [4, 5]:
-                val = int(val) if pd.notna(val) and val != 0 else 0
-                if val == 0:
-                    cell.value = "Rp                    -"
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
+    
+        for r_idx, r in enumerate(dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False), start=3):
+            for c_idx, val in enumerate(r, start=1):
+                cell = ws_jurnal.cell(row=r_idx, column=c_idx)
+                cell.border = thin_border
+                if c_idx in [4, 5]:
+                    val = int(val) if pd.notna(val) and val != 0 else 0
+                    if val == 0:
+                        cell.value = "Rp                    -"
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        cell.value = val
+                        cell.number_format = '"Rp"#,##0.00'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
                 else:
                     cell.value = val
-                    cell.number_format = '"Rp"#,##0.00'
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-            else:
-                cell.value = val
-                cell.alignment = Alignment(horizontal="left", vertical="center")
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
     
         ws_jurnal.column_dimensions['A'].width = 20
         ws_jurnal.column_dimensions['B'].width = 18
@@ -336,41 +336,41 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
     # ============================
     # SHEET 3: BUKU BESAR
     # ============================
-    ws_bb = wb.create_sheet("Buku Besar")
-    bb = buku_besar(df_bulan)
-    current_row_bb = 1
+        ws_bb = wb.create_sheet("Buku Besar")
+        bb = buku_besar(df_bulan)
+        current_row_bb = 1
     
-    for akun, data in bb.items():
-        ws_bb.cell(row=current_row_bb, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True, size=12)
-        ws_bb.merge_cells(start_row=current_row_bb, start_column=1, end_row=current_row_bb, end_column=6)
-        current_row_bb += 1
-        
-        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]
-        for col_num, header in enumerate(headers, start=1):
-            cell = ws_bb.cell(row=current_row_bb, column=col_num, value=header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = header_fill
-            cell.border = thin_border
-        current_row_bb += 1
-        
-        for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]], index=False, header=False):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws_bb.cell(row=current_row_bb, column=c_idx)
-                cell.border = thin_border
-                if c_idx in [4, 5, 6]:
-                    val = int(val) if pd.notna(val) and val != 0 else 0
-                    cell.value = val
-                    cell.number_format = '"Rp"#,##0.00'
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-                else:
-                    cell.value = val
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
+        for akun, data in bb.items():
+            ws_bb.cell(row=current_row_bb, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True, size=12)
+            ws_bb.merge_cells(start_row=current_row_bb, start_column=1, end_row=current_row_bb, end_column=6)
             current_row_bb += 1
-        current_row_bb += 2  # Spasi antar akun
+        
+            headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]
+            for col_num, header in enumerate(headers, start=1):
+                cell = ws_bb.cell(row=current_row_bb, column=col_num, value=header)
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.fill = header_fill
+                cell.border = thin_border
+            current_row_bb += 1
+        
+            for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]], index=False, header=False):
+                for c_idx, val in enumerate(r, start=1):
+                    cell = ws_bb.cell(row=current_row_bb, column=c_idx)
+                    cell.border = thin_border
+                    if c_idx in [4, 5, 6]:
+                        val = int(val) if pd.notna(val) and val != 0 else 0
+                        cell.value = val
+                        cell.number_format = '"Rp"#,##0.00'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        cell.value = val
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+                current_row_bb += 1
+            current_row_bb += 2  # Spasi antar akun
     
-    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
-        ws_bb.column_dimensions[col].width = 18
+        for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+            ws_bb.column_dimensions[col].width = 18
 
     # ============================
     # SHEET 4: NERACA SALDO
@@ -867,6 +867,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
