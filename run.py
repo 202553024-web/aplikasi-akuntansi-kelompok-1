@@ -463,7 +463,7 @@ elif menu == "📝 Input Transaksi":
                 tambah_transaksi(tgl_waktu, akun, ket, debit, kredit)
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
-                st.experimental_rerun()
+                st.rerun()
 
 elif menu == "📋 Lihat Transaksi":
     st.markdown("<div class='subtitle'>📋 Daftar Semua Transaksi</div>", unsafe_allow_html=True)
@@ -487,7 +487,7 @@ elif menu == "📋 Lihat Transaksi":
         if st.button("🗑️ Hapus"):
             hapus_transaksi(idx_hapus)
             st.success("Transaksi berhasil dihapus")
-            st.experimental_rerun()
+            st.rerun()
 
 elif menu == "📖 Buku Besar":
     st.markdown("<div class='subtitle'>📖 Buku Besar Per Akun</div>", unsafe_allow_html=True)
@@ -595,7 +595,7 @@ elif menu == "📥 Import Excel":
                     for _, row in df_import.iterrows():
                         tambah_transaksi(row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"])
                     st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
-                    st.experimental_rerun()
+                    st.rerun()
             else:
                 st.error(f"File harus ada kolom: {expected_cols}")
         except Exception as e:
@@ -627,4 +627,5 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
