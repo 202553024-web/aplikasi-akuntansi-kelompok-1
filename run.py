@@ -233,6 +233,7 @@ def export_excel_multi(df):
 df_sorted = df.sort_values(
     ["Tahun", "Bulan", "Tanggal"]
 )
+
         current_row = 1
         tahun_sekarang = None
 
@@ -866,6 +867,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
