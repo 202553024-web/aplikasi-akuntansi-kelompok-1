@@ -442,9 +442,8 @@ for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
     # SIMPAN FILE
     # =====================
     wb.save(output)
-        output.seek(0)
-        return output.getvalue()
-
+    output.seek(0)
+    return output.getvalue()
 # ============================
 # MENU NAVIGASI
 # ============================
@@ -973,6 +972,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
