@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from datetime import datetime
+from datetime import date  # Menggunakan date untuk default input tanggal
 import io
 import calendar
 from openpyxl import Workbook
@@ -253,7 +253,7 @@ if menu == "Input Transaksi":
         "Beban Gaji", "Beban Listrik", "Beban Sewa"
     ]
 
-    tanggal = st.date_input("Tanggal", datetime.now())
+    tanggal = st.date_input("Tanggal", date.today())  # Menggunakan date.today() untuk default tanggal hari ini, tanpa zona waktu
     akun = st.selectbox("Akun", akun_list)
     ket = st.text_input("Keterangan")
 
