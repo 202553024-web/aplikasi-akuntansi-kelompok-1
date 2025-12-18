@@ -518,6 +518,7 @@ def export_excel_multi(df):
 # ============================
 elif menu == "Grafik":
     st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
     else:
@@ -531,11 +532,13 @@ elif menu == "Grafik":
             width=700
         )
         st.altair_chart(chart, use_container_width=True)
+
 # ============================
 # 7. EXPORT EXCEL (MULTI SHEET)
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada transaksi untuk diekspor.")
     else:
@@ -547,4 +550,3 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
