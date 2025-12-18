@@ -44,10 +44,10 @@ if "transaksi" not in st.session_state:
 # FORMAT RUPIAH
 # ============================
 def to_rp(n):
-    try:
-        return "Rp {:,}".format(int(n)).replace(",", ".")
-    except:
-        return "Rp 0"
+    try:
+        return "Rp {:,}".format(int(n)).replace(",", ".")
+    except:
+        return "Rp 0"
 
 # ============================
 # KLASIFIKASI AKUN
@@ -578,5 +578,6 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
 
 
