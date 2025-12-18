@@ -400,54 +400,66 @@ if menu == "🏠 Dashboard":
 # ============================
 elif menu == "📝 Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True)
-    
+
     st.markdown("""
     <div style='background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
         <h4 style='color: #1976d2; margin: 0;'>💡 Tips Pencatatan:</h4>
         <ul style='color: #1976d2; margin: 5px 0;'>
             <li><strong>Pendapatan</strong> → Dicatat di kolom <strong>DEBIT</strong></li>
             <li><strong>Beban</strong> → Dicatat di kolom <strong>KREDIT</strong></li>
-            <li><strong>Kas Masuk</strong> → Kas di <strong>DEBIT</strong>, Pendapatan di <strong>DEBIT</strong></li>
-            <li><strong>Kas Keluar</strong> → Beban di <strong>KREDIT</strong>, Kas di <strong>KREDIT</strong></li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
-    
+
     with st.form("form_transaksi", clear_on_submit=True):
+
         col1, col2 = st.columns(2)
-        
-with col1:
-    tgl = st.datetime_input(
-        "📅 Tanggal & Waktu Transaksi",
-        datetime.now()
-)
-    bulan = st.selectbox(
-        "🗓️ Bulan Periode",
-        list(calendar.month_name)[1:]
-)
-    tahun = st.number_input(
-        "📆 Tahun Periode",
-        min_value=2000,
-        max_value=2100,
-        value=datetime.now().year
-)
-    akun = st.selectbox("🏦 Pilih Akun", 
-                        ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
-                         "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
-    ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
-        
+
+        with col1:
+            tgl = st.datetime_input(
+                "📅 Tanggal & Waktu Transaksi",
+                datetime.now()
+            )
+
+            bulan = st.selectbox(
+                "🗓️ Bulan Periode",
+                list(calendar.month_name)[1:]
+            )
+
+            tahun = st.number_input(
+                "📆 Tahun Periode",
+                min_value=2000,
+                max_value=2100,
+                value=datetime.now().year
+            )
+
+            akun = st.selectbox(
+                "🏦 Pilih Akun",
+                ["Kas", "Piutang", "Modal",
+                 "Pendapatan Jasa", "Pendapatan Lainnya",
+                 "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"]
+            )
+
+            ket = st.text_input(
+                "📝 Keterangan",
+                placeholder="Contoh: Pembayaran gaji karyawan"
+            )
+
         with col2:
             st.markdown("#### 💰 Jumlah Transaksi")
             debit = st.number_input("Debit (Rp)", min_value=0, step=10000, format="%d")
             kredit = st.number_input("Kredit (Rp)", min_value=0, step=10000, format="%d")
-            
+
         st.markdown("---")
-        col_btn1, col_btn2, col_btn3 = st.columns([1,1,3])
+
+        col_btn1, col_btn2, _ = st.columns([1, 1, 3])
+
         with col_btn1:
             submit = st.form_submit_button("✅ Simpan Transaksi", use_container_width=True)
+
         with col_btn2:
-            cancel = st.form_submit_button("🔄 Reset", use_container_width=True)
-        
+            reset = st.form_submit_button("🔄 Reset", use_container_width=True)
+
         if submit:
             if debit == 0 and kredit == 0:
                 st.error("❌ Debit atau Kredit harus diisi!")
@@ -455,9 +467,9 @@ with col1:
                 st.error("❌ Keterangan harus diisi!")
             else:
                 tambah_transaksi(
-    tgl, akun, ket, debit, kredit,
-    bulan, tahun
-)
+                    tgl, akun, ket, debit, kredit,
+                    bulan, tahun
+                )
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
                 st.rerun()
