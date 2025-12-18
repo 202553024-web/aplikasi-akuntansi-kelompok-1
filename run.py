@@ -376,7 +376,7 @@ def export_excel_multi(df):
     ws_bb.column_dimensions['D'].width = 18
     ws_bb.column_dimensions['E'].width = 18
 
-    # ============================
+      # ============================
     # SHEET 4: NERACA SALDO
     # ============================
     ws_ns = wb.create_sheet("Neraca Saldo")
@@ -394,7 +394,7 @@ def export_excel_multi(df):
     neraca = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
     neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
 
-       headers = ["Akun", "Debit", "Kredit", "Saldo"]
+    headers = ["Akun", "Debit", "Kredit", "Saldo"]
     for col_num, header in enumerate(headers, start=1):
         cell = ws_ns.cell(row=3, column=col_num, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
@@ -512,6 +512,7 @@ def export_excel_multi(df):
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+    
 # ============================
 # 6. GRAFIK
 # ============================
@@ -546,3 +547,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
