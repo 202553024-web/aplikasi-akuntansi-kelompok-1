@@ -135,7 +135,7 @@ st.markdown("""
 # Header
 st.markdown("""
 <div class='main-title'>
-    <h1>💰 Aplikasi Akuntansi Profesional</h1>
+    <h1>💰 Aplikasi Akuntansi Keuangan</h1>
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
@@ -672,4 +672,5 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
