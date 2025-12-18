@@ -110,14 +110,8 @@ def format_tanggal(dt):
 pendapatan_akun = ["Pendapatan Jasa", "Pendapatan Lainnya"]
 beban_akun = ["Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"]
 
-def tambah_transaksi(tgl, akun, ket, debit, kredit):
-    st.session_state.transaksi.append({
-        "Tanggal": tgl,
-        "Akun": akun,
-        "Keterangan": ket,
-        "Debit": int(debit),
-        "Kredit": int(kredit)
-    })
+def tambah_transaksi(data):
+    st.session_state.transaksi.append(data)
 
 def hapus_transaksi(idx):
     st.session_state.transaksi.pop(idx)
@@ -444,7 +438,18 @@ elif menu == "📝 Input Transaksi":
 
     with st.form("form_transaksi", clear_on_submit=True):
         tz = pytz.timezone('Asia/Jakarta')
-        tgl_input = st.date_input("📅 Tanggal Transaksi", datetime.now(tz).date())
+        
+        col1, col2 = st.columns(2)
+    with col1:
+        tahun = st.selectbox("📆 Tahun", list(range(2020, datetime.now().year + 2)), index=5)
+    with col2:
+        bulan = st.selectbox("🗓️ Bulan", list(range(1, 13)),
+                             format_func=lambda x: calendar.month_name[x])
+        tanggal = st.date_input(
+            "📅 Tanggal Transaksi",
+            datetime(tahun, bulan, 1).date()
+        )
+
         akun = st.selectbox("🏦 Pilih Akun", [
             "Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
             "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
@@ -460,7 +465,15 @@ elif menu == "📝 Input Transaksi":
             else:
                 waktu_device = datetime.now(tz).time()
                 tgl_waktu = datetime.combine(tgl_input, waktu_device)
-                tambah_transaksi(tgl_waktu, akun, ket, debit, kredit)
+                tambah_transaksi({
+                    "Tanggal": tgl_waktu,
+                    "Tahun": tahun,
+                    "Bulan": bulan,
+                    "Akun": akun,
+                    "Keterangan": ket,
+                    "Debit": int(debit),
+                    "Kredit": int(kredit)
+                })
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
                 st.rerun()
@@ -575,33 +588,51 @@ elif menu == "📈 Grafik":
 
 elif menu == "📥 Import Excel":
     st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
     if uploaded_file:
-        try:
-            df_import = pd.read_excel(uploaded_file)
-            expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-            if all(col in df_import.columns for col in expected_cols):
-                df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors='coerce')
-                df_import = df_import.dropna(subset=["Tanggal"])
-                df_import["Debit"] = pd.to_numeric(df_import["Debit"], errors='coerce').fillna(0).astype(int)
-                df_import["Kredit"] = pd.to_numeric(df_import["Kredit"], errors='coerce').fillna(0).astype(int)
-                st.markdown("Preview data yang akan diimpor")
-                preview = df_import.copy()
-                preview["Tanggal"] = preview["Tanggal"].apply(format_tanggal)
-                preview["Debit"] = preview["Debit"].apply(format_rupiah_angka)
-                preview["Kredit"] = preview["Kredit"].apply(format_rupiah_angka)
-                st.dataframe(preview)
-                if st.button("Tambahkan semua transaksi dari file"):
-                    for _, row in df_import.iterrows():
-                        tambah_transaksi(row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"])
-                    st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
-                    st.rerun()
-            else:
-                st.error(f"File harus ada kolom: {expected_cols}")
-        except Exception as e:
-            st.error(f"Error membaca file: {e}")
+        df_import = pd.read_excel(uploaded_file)
+        df_import.columns = df_import.columns.str.strip()  # bersihkan nama kolom
+        expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+    
+    if not all(col in df_import.columns for col in expected_cols):
+        st.error(f"File harus ada kolom: {expected_cols}")
+    else:
+        df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors="coerce")
+        df_import = df_import.dropna(subset=["Tanggal"])
+
+        # bersihkan angka
+        for col in ["Debit", "Kredit"]:
+            df_import[col] = (
+                df_import[col].astype(str)
+                .str.replace("Rp", "")
+                .str.replace(".", "")
+                .str.replace(",", ".")
+            )
+            df_import[col] = pd.to_numeric(df_import[col], errors="coerce").fillna(0).astype(int)
+
+        # tambah Tahun & Bulan
+        df_import["Tahun"] = df_import["Tanggal"].dt.year
+        df_import["Bulan"] = df_import["Tanggal"].dt.month
+
+        st.dataframe(df_import.head())
+
+        if st.button("Tambahkan semua transaksi dari file"):
+            for _, row in df_import.iterrows():
+                tambah_transaksi(
+                    row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"]
+                )
+            st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
+            st.rerun()
+
 
 elif menu == "📤 Export Excel":
+    df = pd.DataFrame(st.session_state.transaksi)
+    
+    if "Tahun" not in df.columns:
+    df["Tahun"] = df["Tanggal"].dt.year
+    
+    if "Bulan" not in df.columns:
+    df["Bulan"] = df["Tanggal"].dt.month
+
     st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
     if total_transaksi == 0:
         st.info("Belum ada transaksi untuk diexport.")
@@ -610,6 +641,65 @@ elif menu == "📤 Export Excel":
         st.markdown(f"Total transaksi: {total_transaksi}")
         try:
             excel_data = export_excel_multi(df)
+
+            for tahun, df_tahun in df.groupby("Tahun"):
+    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+    tcell = ws.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
+    tcell.font = Font(bold=True, size=14)
+    tcell.fill = year_fill
+    tcell.alignment = Alignment(horizontal="center", vertical="center")
+    for col in range(1, 6):
+        ws.cell(row=current_row, column=col).border = thin_border
+    current_row += 1
+
+    # --- LOOP BULAN ---
+    for bulan, df_bulan in df_tahun.groupby("Bulan"):
+        nama_bulan = calendar.month_name[bulan]
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+        bcell = ws.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
+        bcell.font = font_bold
+        bcell.fill = title_fill
+        bcell.alignment = Alignment(horizontal="center", vertical="center")
+        for col in range(1, 6):
+            ws.cell(row=current_row, column=col).border = thin_border
+        current_row += 1
+
+        # --- HEADER ---
+        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+        for idx, val in enumerate(headers, start=1):
+            hcell = ws.cell(row=current_row, column=idx, value=val)
+            hcell.font = font_white_bold
+            hcell.fill = header_fill
+            hcell.alignment = Alignment(horizontal="center", vertical="center")
+            hcell.border = thin_border
+        current_row += 1
+
+        # --- DATA ---
+        if df_bulan.empty:
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+            ws.cell(row=current_row, column=1, value="Tidak ada transaksi").alignment = Alignment(horizontal="center")
+            current_row += 2
+        else:
+            for _, row in df_bulan.iterrows():
+                ws.cell(row=current_row, column=1, value=row["Tanggal"].strftime("%Y-%m-%d %H:%M:%S"))
+                ws.cell(row=current_row, column=2, value=row["Akun"])
+                ws.cell(row=current_row, column=3, value=row["Keterangan"])
+                ws.cell(row=current_row, column=4, value=row["Debit"])
+                ws.cell(row=current_row, column=5, value=row["Kredit"])
+                for col in range(1, 6):
+                    ws.cell(row=current_row, column=col).border = thin_border
+                current_row += 1
+
+            # --- TOTAL PER BULAN ---
+            total_debit = df_bulan["Debit"].sum()
+            total_kredit = df_bulan["Kredit"].sum()
+            ws.cell(row=current_row, column=3, value="TOTAL").font = Font(bold=True)
+            ws.cell(row=current_row, column=4, value=total_debit).font = Font(bold=True)
+            ws.cell(row=current_row, column=5, value=total_kredit).font = Font(bold=True)
+            for col in range(3, 6):
+                ws.cell(row=current_row, column=col).border = thin_border
+            current_row += 2
+
             st.download_button("Download Laporan Akuntansi.xlsx", excel_data,
                                 file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -627,3 +717,4 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
