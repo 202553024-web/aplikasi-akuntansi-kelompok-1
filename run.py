@@ -418,8 +418,8 @@ elif menu == "📝 Input Transaksi":
         
         with col1:
     tgl = st.datetime_input(
-    "📅 Tanggal & Waktu Transaksi",
-    datetime.now()
+        "📅 Tanggal & Waktu Transaksi",
+        datetime.now()
 )
             bulan = st.selectbox(
     "🗓️ Bulan Periode",
