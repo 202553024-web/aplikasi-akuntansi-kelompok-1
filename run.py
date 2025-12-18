@@ -425,10 +425,26 @@ elif menu == "📝 Input Transaksi":
         with col1:
             tgl = get_device_datetime()
 
+            # Ambil jam otomatis dari device
+            device_time = get_device_datetime()
+
+            # TANGGAL → bisa diubah user
+            tanggal = st.date_input(
+                "📅 Tanggal Transaksi",
+                device_time.date()
+            )
+
+            # JAM → otomatis & terkunci
             st.text_input(
-                "📅 Tanggal & Waktu Transaksi",
-                value=tgl.strftime("%Y/%m/%d, %H:%M"),
+                "⏰ Jam Transaksi",
+                value=device_time.strftime("%H:%M:%S"),
                 disabled=True
+            )
+
+            # Gabungkan tanggal + jam
+            tgl = datetime.combine(
+                tanggal,
+                device_time.time()
             )
 
             bulan = st.selectbox(
@@ -766,6 +782,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
