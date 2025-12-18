@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -18,10 +19,11 @@ st.set_page_config(
     page_title="Aplikasi Akuntansi Keuangan",
     page_icon="💰",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-st.markdown("""
+st.markdown(
+    """
 <style>
     /* Main Title */
     .main-title {
@@ -132,21 +134,27 @@ st.markdown("""
         }
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Header
-st.markdown("""
+st.markdown(
+    """
 <div class='main-title'>
     <h1>💰 Aplikasi Akuntansi Keuangan</h1>
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ============================
 # SESSION DATA
 # ============================
 if "transaksi" not in st.session_state:
     st.session_state.transaksi = []
+
 
 # ============================
 # FORMAT RUPIAH
@@ -157,11 +165,13 @@ def to_rp(n):
     except:
         return "Rp 0"
 
+
 # ============================
 # AMBIL JAM DARI DEVICE USER
 # ============================
 def get_device_datetime():
     return datetime.now(ZoneInfo("Asia/Jakarta"))
+
 
 # ============================
 # KLASIFIKASI AKUN
@@ -169,22 +179,27 @@ def get_device_datetime():
 pendapatan_akun = ["Pendapatan Jasa", "Pendapatan Lainnya"]
 beban_akun = ["Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"]
 
+
 # ============================
 # FUNGSI AKUNTANSI
 # ============================
 def tambah_transaksi(tgl, akun, ket, debit, kredit, bulan, tahun):
-    st.session_state.transaksi.append({
-        "Tanggal": tgl,
-        "Akun": akun,
-        "Keterangan": ket,
-        "Debit": int(debit),
-        "Kredit": int(kredit),
-        "Bulan": bulan,
-        "Tahun": int(tahun)
-    })
+    st.session_state.transaksi.append(
+        {
+            "Tanggal": tgl,
+            "Akun": akun,
+            "Keterangan": ket,
+            "Debit": int(debit),
+            "Kredit": int(kredit),
+            "Bulan": bulan,
+            "Tahun": int(tahun),
+        }
+    )
+
 
 def hapus_transaksi(idx):
     st.session_state.transaksi.pop(idx)
+
 
 def buku_besar(df):
     akun_list = df["Akun"].unique()
@@ -195,10 +210,12 @@ def buku_besar(df):
         buku_besar_data[akun] = df_akun
     return buku_besar_data
 
+
 def neraca_saldo(df):
     grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum()
     grouped["Saldo"] = grouped["Debit"] - grouped["Kredit"]
     return grouped
+
 
 def laporan_laba_rugi(df):
     # PERBAIKAN: Pendapatan dicatat di DEBIT, jadi kita ambil debit untuk pendapatan
@@ -209,8 +226,9 @@ def laporan_laba_rugi(df):
     return {
         "Total Pendapatan": total_pendapatan,
         "Total Beban": total_beban,
-        "Laba/Rugi": laba_rugi
+        "Laba/Rugi": laba_rugi,
     }
+
 
 # ============================
 # FUNGSI EXPORT EXCEL
@@ -223,10 +241,10 @@ def export_excel_multi(df):
     # STYLE
     # =====================
     thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
     )
 
     header_fill = PatternFill("solid", fgColor="4472C4")
@@ -244,18 +262,24 @@ def export_excel_multi(df):
     current_row = 1
     tahun_sekarang = None
 
-for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
 
+for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
     if tahun != tahun_sekarang:
-        ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-        cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
+        ws_main.merge_cells(
+            start_row=current_row, start_column=1, end_row=current_row, end_column=5
+        )
+        cell = ws_main.cell(
+            row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}"
+        )
         cell.font = Font(bold=True, size=14)
         cell.alignment = Alignment(horizontal="center")
         cell.fill = year_fill
         current_row += 1
         tahun_sekarang = tahun
 
-    ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+    ws_main.merge_cells(
+        start_row=current_row, start_column=1, end_row=current_row, end_column=5
+    )
     cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {bulan}")
     cell.font = Font(bold=True)
     cell.alignment = Alignment(horizontal="center")
@@ -286,20 +310,32 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
     total_kredit_bulan = grup["Kredit"].sum()
     saldo_bulan = total_debit_bulan - total_kredit_bulan
 
-    ws_main.cell(row=current_row, column=3, value="TOTAL BULAN INI").font = Font(bold=True)
-    ws_main.cell(row=current_row, column=4, value=total_debit_bulan).font = Font(bold=True)
-    ws_main.cell(row=current_row, column=5, value=total_kredit_bulan).font = Font(bold=True)
+    ws_main.cell(row=current_row, column=3, value="TOTAL BULAN INI").font = Font(
+        bold=True
+    )
+    ws_main.cell(row=current_row, column=4, value=total_debit_bulan).font = Font(
+        bold=True
+    )
+    ws_main.cell(row=current_row, column=5, value=total_kredit_bulan).font = Font(
+        bold=True
+    )
 
     for col in [3, 4, 5]:
         ws_main.cell(row=current_row, column=col).border = thin_border
-        ws_main.cell(row=current_row, column=col).fill = PatternFill("solid", fgColor="FFF2CC")
+        ws_main.cell(row=current_row, column=col).fill = PatternFill(
+            "solid", fgColor="FFF2CC"
+        )
 
     current_row += 1
 
-    ws_main.cell(row=current_row, column=3, value="SALDO BULAN INI").font = Font(bold=True)
+    ws_main.cell(row=current_row, column=3, value="SALDO BULAN INI").font = Font(
+        bold=True
+    )
     ws_main.cell(row=current_row, column=4, value=saldo_bulan).font = Font(bold=True)
     ws_main.cell(row=current_row, column=4).border = thin_border
-    ws_main.cell(row=current_row, column=4).fill = PatternFill("solid", fgColor="E2EFDA")
+    ws_main.cell(row=current_row, column=4).fill = PatternFill(
+        "solid", fgColor="E2EFDA"
+    )
 
 current_row += 2
 
@@ -312,8 +348,11 @@ for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
     ws_jurnal = wb.create_sheet("Jurnal Umum")
     ws_jurnal.append(["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"])
 
-    for r in dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]],
-                               index=False, header=False):
+    for r in dataframe_to_rows(
+        df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]],
+        index=False,
+        header=False,
+    ):
         ws_jurnal.append(r)
 
     # =====================
@@ -325,12 +364,17 @@ for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
 
     for akun, data in bb.items():
         ws_bb.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-        ws_bb.cell(row=row, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True)
+        ws_bb.cell(row=row, column=1, value=f"Buku Besar - {akun}").font = Font(
+            bold=True
+        )
         row += 1
 
         ws_bb.append(["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"])
-        for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]],
-                                   index=False, header=False):
+        for r in dataframe_to_rows(
+            data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]],
+            index=False,
+            header=False,
+        ):
             ws_bb.append(r)
         row += len(data) + 2
 
@@ -361,16 +405,25 @@ for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
     output.seek(0)
 
     return output.getvalue()
-    
+
 # ============================
 # MENU NAVIGASI
 # ============================
 st.sidebar.markdown("### 📋 Menu Navigasi")
 menu = st.sidebar.radio(
     "",
-    ["🏠 Dashboard", "📝 Input Transaksi", "📋 Lihat Transaksi", "📖 Buku Besar", 
-     "⚖️ Neraca Saldo", "💰 Laporan Laba Rugi", "📈 Grafik", "📤 Export Excel", "📥 Import Excel"],
-    label_visibility="collapsed"
+    [
+        "🏠 Dashboard",
+        "📝 Input Transaksi",
+        "📋 Lihat Transaksi",
+        "📖 Buku Besar",
+        "⚖️ Neraca Saldo",
+        "💰 Laporan Laba Rugi",
+        "📈 Grafik",
+        "📤 Export Excel",
+        "📥 Import Excel",
+    ],
+    label_visibility="collapsed",
 )
 
 # Info di sidebar
@@ -390,11 +443,14 @@ if total_transaksi > 0:
 # 0. DASHBOARD
 # ============================
 if menu == "🏠 Dashboard":
-    st.markdown("<div class='subtitle'>🏠 Dashboard Overview</div>", unsafe_allow_html=True)
-    
+    st.markdown(
+        "<div class='subtitle'>🏠 Dashboard Overview</div>", unsafe_allow_html=True
+    )
+
     if len(st.session_state.transaksi) == 0:
         st.info("👋 Selamat datang! Mulai dengan menambahkan transaksi pertama Anda.")
-        st.markdown("""
+        st.markdown(
+            """
         ### 📚 Panduan Penggunaan:
         1. **Input Transaksi** - Tambahkan transaksi baru
         2. **Lihat Transaksi** - Review dan hapus transaksi
@@ -403,11 +459,12 @@ if menu == "🏠 Dashboard":
         5. **Laporan Laba Rugi** - Analisis profit/loss
         6. **Grafik** - Visualisasi data
         7. **Export Excel** - Download laporan lengkap
-        """)
+        """
+        )
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         lr = laporan_laba_rugi(df)
-        
+
         # Metrics
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -421,9 +478,9 @@ if menu == "🏠 Dashboard":
                 st.metric("✅ Laba Bersih", to_rp(lr["Laba/Rugi"]))
             else:
                 st.metric("⚠️ Rugi Bersih", to_rp(abs(lr["Laba/Rugi"])))
-        
+
         st.markdown("---")
-        
+
         # Recent Transactions
         st.markdown("### 📋 Transaksi Terbaru")
         df_display = df.tail(5).copy()
@@ -435,9 +492,12 @@ if menu == "🏠 Dashboard":
 # 1. INPUT TRANSAKSI
 # ============================
 elif menu == "📝 Input Transaksi":
-    st.markdown("<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True
+    )
 
-    st.markdown("""
+    st.markdown(
+        """
     <div style='background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
         <h4 style='color: #1976d2; margin: 0;'>💡 Tips Pencatatan:</h4>
         <ul style='color: #1976d2; margin: 5px 0;'>
@@ -445,10 +505,11 @@ elif menu == "📝 Input Transaksi":
             <li><strong>Beban</strong> → Dicatat di kolom <strong>KREDIT</strong></li>
         </ul>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     with st.form("form_transaksi", clear_on_submit=True):
-
         col1, col2 = st.columns(2)
 
         with col1:
@@ -458,59 +519,59 @@ elif menu == "📝 Input Transaksi":
             device_time = get_device_datetime()
 
             # TANGGAL → bisa diubah user
-            tanggal = st.date_input(
-                "📅 Tanggal Transaksi",
-                device_time.date()
-            )
+            tanggal = st.date_input("📅 Tanggal Transaksi", device_time.date())
 
             # JAM → otomatis & terkunci
             st.text_input(
-                "⏰ Jam Transaksi",
-                value=device_time.strftime("%H:%M:%S"),
-                disabled=True
+                "⏰ Jam Transaksi", value=device_time.strftime("%H:%M:%S"), disabled=True
             )
 
             # Gabungkan tanggal + jam
-            tgl = datetime.combine(
-                tanggal,
-                device_time.time()
-            )
+            tgl = datetime.combine(tanggal, device_time.time())
 
-            bulan = st.selectbox(
-                "🗓️ Bulan Periode",
-                list(calendar.month_name)[1:]
-            )
+            bulan = st.selectbox("🗓️ Bulan Periode", list(calendar.month_name)[1:])
 
             tahun = st.number_input(
                 "📆 Tahun Periode",
                 min_value=2000,
                 max_value=2100,
-                value=datetime.now().year
+                value=datetime.now().year,
             )
 
             akun = st.selectbox(
                 "🏦 Pilih Akun",
-                ["Kas", "Piutang", "Modal",
-                 "Pendapatan Jasa", "Pendapatan Lainnya",
-                 "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"]
+                [
+                    "Kas",
+                    "Piutang",
+                    "Modal",
+                    "Pendapatan Jasa",
+                    "Pendapatan Lainnya",
+                    "Beban Gaji",
+                    "Beban Listrik",
+                    "Beban Sewa",
+                    "Beban Lainnya",
+                ],
             )
 
             ket = st.text_input(
-                "📝 Keterangan",
-                placeholder="Contoh: Pembayaran gaji karyawan"
+                "📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan"
             )
 
         with col2:
             st.markdown("#### 💰 Jumlah Transaksi")
             debit = st.number_input("Debit (Rp)", min_value=0, step=10000, format="%d")
-            kredit = st.number_input("Kredit (Rp)", min_value=0, step=10000, format="%d")
+            kredit = st.number_input(
+                "Kredit (Rp)", min_value=0, step=10000, format="%d"
+            )
 
         st.markdown("---")
 
         col_btn1, col_btn2, _ = st.columns([1, 1, 3])
 
         with col_btn1:
-            submit = st.form_submit_button("✅ Simpan Transaksi", use_container_width=True)
+            submit = st.form_submit_button(
+                "✅ Simpan Transaksi", use_container_width=True
+            )
 
         with col_btn2:
             reset = st.form_submit_button("🔄 Reset", use_container_width=True)
@@ -521,10 +582,7 @@ elif menu == "📝 Input Transaksi":
             elif ket.strip() == "":
                 st.error("❌ Keterangan harus diisi!")
             else:
-                tambah_transaksi(
-                    tgl, akun, ket, debit, kredit,
-                    bulan, tahun
-                )
+                tambah_transaksi(tgl, akun, ket, debit, kredit, bulan, tahun)
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
                 st.rerun()
@@ -533,37 +591,47 @@ elif menu == "📝 Input Transaksi":
 # 2. LIHAT TRANSAKSI
 # ============================
 elif menu == "📋 Lihat Transaksi":
-    st.markdown("<div class='subtitle'>📋 Daftar Semua Transaksi</div>", unsafe_allow_html=True)
-    
+    st.markdown(
+        "<div class='subtitle'>📋 Daftar Semua Transaksi</div>", unsafe_allow_html=True
+    )
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi yang tercatat.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        
+
         # Filter
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            filter_akun = st.multiselect("🔍 Filter berdasarkan Akun", df["Akun"].unique())
+            filter_akun = st.multiselect(
+                "🔍 Filter berdasarkan Akun", df["Akun"].unique()
+            )
         with col_f2:
-            sort_by = st.selectbox("📊 Urutkan berdasarkan", ["Tanggal", "Akun", "Debit", "Kredit"])
-        
+            sort_by = st.selectbox(
+                "📊 Urutkan berdasarkan", ["Tanggal", "Akun", "Debit", "Kredit"]
+            )
+
         df_filtered = df.copy()
         if filter_akun:
             df_filtered = df_filtered[df_filtered["Akun"].isin(filter_akun)]
-        
+
         df_filtered = df_filtered.sort_values(sort_by)
         df_display = df_filtered.copy()
         df_display["Debit"] = df_display["Debit"].apply(to_rp)
         df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
-        
+
         st.dataframe(df_display, use_container_width=True, hide_index=True)
-        
+
         st.markdown("---")
         st.markdown("### 🗑️ Hapus Transaksi")
         col_h1, col_h2 = st.columns([3, 1])
         with col_h1:
-            idx_hapus = st.number_input("Nomor indeks transaksi yang ingin dihapus", 
-                                       min_value=0, max_value=len(st.session_state.transaksi)-1, step=1)
+            idx_hapus = st.number_input(
+                "Nomor indeks transaksi yang ingin dihapus",
+                min_value=0,
+                max_value=len(st.session_state.transaksi) - 1,
+                step=1,
+            )
         with col_h2:
             if st.button("🗑️ Hapus", use_container_width=True):
                 hapus_transaksi(idx_hapus)
@@ -574,16 +642,18 @@ elif menu == "📋 Lihat Transaksi":
 # 3. BUKU BESAR
 # ============================
 elif menu == "📖 Buku Besar":
-    st.markdown("<div class='subtitle'>📖 Buku Besar Per Akun</div>", unsafe_allow_html=True)
-    
+    st.markdown(
+        "<div class='subtitle'>📖 Buku Besar Per Akun</div>", unsafe_allow_html=True
+    )
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk ditampilkan.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         bb = buku_besar(df)
-        
+
         for idx, (akun, data) in enumerate(bb.items()):
-            with st.expander(f"📊 {akun}", expanded=(idx==0)):
+            with st.expander(f"📊 {akun}", expanded=(idx == 0)):
                 data_display = data.copy()
                 data_display["Debit"] = data_display["Debit"].apply(to_rp)
                 data_display["Kredit"] = data_display["Kredit"].apply(to_rp)
@@ -595,7 +665,7 @@ elif menu == "📖 Buku Besar":
 # ============================
 elif menu == "⚖️ Neraca Saldo":
     st.markdown("<div class='subtitle'>⚖️ Neraca Saldo</div>", unsafe_allow_html=True)
-    
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk ditampilkan.")
     else:
@@ -611,60 +681,87 @@ elif menu == "⚖️ Neraca Saldo":
 # 5. LAPORAN LABA RUGI
 # ============================
 elif menu == "💰 Laporan Laba Rugi":
-    st.markdown("<div class='subtitle'>💰 Laporan Laba Rugi</div>", unsafe_allow_html=True)
-    
+    st.markdown(
+        "<div class='subtitle'>💰 Laporan Laba Rugi</div>", unsafe_allow_html=True
+    )
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk dianalisis.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         lr = laporan_laba_rugi(df)
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
-            st.markdown("""
+            st.markdown(
+                """
             <div style='background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
                         padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                 <h3 style='margin: 0; font-size: 18px;'>💵 Total Pendapatan</h3>
-                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(lr["Total Pendapatan"]) + """</h2>
+                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>"""
+                + to_rp(lr["Total Pendapatan"])
+                + """</h2>
             </div>
-            """, unsafe_allow_html=True)
-        
+            """,
+                unsafe_allow_html=True,
+            )
+
         with col2:
-            st.markdown("""
+            st.markdown(
+                """
             <div style='background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%); 
                         padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                 <h3 style='margin: 0; font-size: 18px;'>💸 Total Beban</h3>
-                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(lr["Total Beban"]) + """</h2>
+                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>"""
+                + to_rp(lr["Total Beban"])
+                + """</h2>
             </div>
-            """, unsafe_allow_html=True)
-        
+            """,
+                unsafe_allow_html=True,
+            )
+
         with col3:
             if lr["Laba/Rugi"] >= 0:
-                st.markdown("""
+                st.markdown(
+                    """
                 <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                             padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                     <h3 style='margin: 0; font-size: 18px;'>✅ Laba Bersih</h3>
-                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(lr["Laba/Rugi"]) + """</h2>
+                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>"""
+                    + to_rp(lr["Laba/Rugi"])
+                    + """</h2>
                 </div>
-                """, unsafe_allow_html=True)
+                """,
+                    unsafe_allow_html=True,
+                )
             else:
-                st.markdown("""
+                st.markdown(
+                    """
                 <div style='background: linear-gradient(135deg, #f2709c 0%, #ff9472 100%); 
                             padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                     <h3 style='margin: 0; font-size: 18px;'>⚠️ Rugi Bersih</h3>
-                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(abs(lr["Laba/Rugi"])) + """</h2>
+                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>"""
+                    + to_rp(abs(lr["Laba/Rugi"]))
+                    + """</h2>
                 </div>
-                """, unsafe_allow_html=True)
-        
+                """,
+                    unsafe_allow_html=True,
+                )
+
         st.markdown("---")
-        
+
         # Detail breakdown
         st.markdown("### 📊 Detail Perhitungan")
         detail_data = {
             "Keterangan": ["Total Pendapatan", "Total Beban", "Laba/Rugi Bersih"],
-            "Jumlah": [to_rp(lr["Total Pendapatan"]), to_rp(lr["Total Beban"]), 
-                      to_rp(lr["Laba/Rugi"]) if lr["Laba/Rugi"] >= 0 else f"({to_rp(abs(lr['Laba/Rugi']))})"]
+            "Jumlah": [
+                to_rp(lr["Total Pendapatan"]),
+                to_rp(lr["Total Beban"]),
+                to_rp(lr["Laba/Rugi"])
+                if lr["Laba/Rugi"] >= 0
+                else f"({to_rp(abs(lr['Laba/Rugi']))})",
+            ],
         }
         st.table(pd.DataFrame(detail_data))
 
@@ -672,53 +769,68 @@ elif menu == "💰 Laporan Laba Rugi":
 # 6. GRAFIK
 # ============================
 elif menu == "📈 Grafik":
-    st.markdown("<div class='subtitle'>📈 Visualisasi Data Akuntansi</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='subtitle'>📈 Visualisasi Data Akuntansi</div>",
+        unsafe_allow_html=True,
+    )
 
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada data untuk divisualisasikan.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        
-        tab1, tab2, tab3 = st.tabs(["📊 Debit per Akun", "📊 Kredit per Akun", "📊 Perbandingan"])
-        
+
+        tab1, tab2, tab3 = st.tabs(
+            ["📊 Debit per Akun", "📊 Kredit per Akun", "📊 Perbandingan"]
+        )
+
         with tab1:
-            chart = alt.Chart(df).mark_bar().encode(
-                x=alt.X("Akun:N", title="Akun"),
-                y=alt.Y("Debit:Q", title="Debit (Rp)"),
-                color=alt.Color("Akun:N", legend=None),
-                tooltip=["Akun", "Debit"]
-            ).properties(
-                title="Grafik Total Debit per Akun",
-                height=400
+            chart = (
+                alt.Chart(df)
+                .mark_bar()
+                .encode(
+                    x=alt.X("Akun:N", title="Akun"),
+                    y=alt.Y("Debit:Q", title="Debit (Rp)"),
+                    color=alt.Color("Akun:N", legend=None),
+                    tooltip=["Akun", "Debit"],
+                )
+                .properties(title="Grafik Total Debit per Akun", height=400)
             )
             st.altair_chart(chart, use_container_width=True)
-        
+
         with tab2:
-            chart2 = alt.Chart(df).mark_bar().encode(
-                x=alt.X("Akun:N", title="Akun"),
-                y=alt.Y("Kredit:Q", title="Kredit (Rp)"),
-                color=alt.Color("Akun:N", legend=None),
-                tooltip=["Akun", "Kredit"]
-            ).properties(
-                title="Grafik Total Kredit per Akun",
-                height=400
+            chart2 = (
+                alt.Chart(df)
+                .mark_bar()
+                .encode(
+                    x=alt.X("Akun:N", title="Akun"),
+                    y=alt.Y("Kredit:Q", title="Kredit (Rp)"),
+                    color=alt.Color("Akun:N", legend=None),
+                    tooltip=["Akun", "Kredit"],
+                )
+                .properties(title="Grafik Total Kredit per Akun", height=400)
             )
             st.altair_chart(chart2, use_container_width=True)
-        
+
         with tab3:
             df_grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
-            df_melted = df_grouped.melt(id_vars="Akun", value_vars=["Debit", "Kredit"], 
-                                        var_name="Tipe", value_name="Jumlah")
-            
-            chart3 = alt.Chart(df_melted).mark_bar().encode(
-                x=alt.X("Akun:N", title="Akun"),
-                y=alt.Y("Jumlah:Q", title="Jumlah (Rp)"),
-                color="Tipe:N",
-                xOffset="Tipe:N",
-                tooltip=["Akun", "Tipe", "Jumlah"]
-            ).properties(
-                title="Perbandingan Debit vs Kredit per Akun",
-                height=400
+            df_melted = df_grouped.melt(
+                id_vars="Akun",
+                value_vars=["Debit", "Kredit"],
+                var_name="Tipe",
+                value_name="Jumlah",
+            )
+
+            chart3 = (
+                alt.Chart(df_melted)
+                .mark_bar()
+                .encode(
+                    x=alt.X("Akun:N", title="Akun"),
+                    y=alt.Y("Jumlah:Q", title="Jumlah (Rp)"),
+                    color="Tipe:N",
+                    xOffset="Tipe:N",
+                    tooltip=["Akun", "Tipe", "Jumlah"],
+                )
+                .properties(title="Perbandingan Debit vs Kredit per Akun", height=400)
             )
             st.altair_chart(chart3, use_container_width=True)
 
@@ -726,12 +838,15 @@ elif menu == "📈 Grafik":
 # 7. EXPORT EXCEL
 # ============================
 elif menu == "📤 Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True
+    )
 
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk diekspor.")
     else:
-        st.markdown("""
+        st.markdown(
+            """
         <div style='background: #fff3cd; padding: 20px; border-radius: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px;'>
             <h4 style='color: #856404; margin: 0 0 10px 0;'>📦 File Excel akan berisi:</h4>
             <ul style='color: #856404; margin: 0;'>
@@ -742,10 +857,12 @@ elif menu == "📤 Export Excel":
                 <li>📄 Sheet 5: Laporan Laba Rugi</li>
             </ul>
         </div>
-        """, unsafe_allow_html=True)
-        
+        """,
+            unsafe_allow_html=True,
+        )
+
         df = pd.DataFrame(st.session_state.transaksi)
-        
+
         # Preview data
         st.markdown("### 👁️ Preview Data")
         col_p1, col_p2 = st.columns(2)
@@ -753,11 +870,11 @@ elif menu == "📤 Export Excel":
             st.metric("Total Transaksi", len(df))
         with col_p2:
             st.metric("Total Akun Unik", df["Akun"].nunique())
-        
+
         # Generate Excel
         try:
             excel_file = export_excel_multi(df)
-            
+
             st.markdown("---")
             col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
             with col_d2:
@@ -766,7 +883,7 @@ elif menu == "📤 Export Excel":
                     data=excel_file,
                     file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
+                    use_container_width=True,
                 )
             st.success("✅ File Excel siap didownload!")
         except Exception as e:
@@ -776,7 +893,10 @@ elif menu == "📤 Export Excel":
 # 8. IMPORT EXCEL
 # ============================
 elif menu == "📥 Import Excel":
-    st.markdown("<div class='subtitle'>📥 Import Transaksi dari Excel</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='subtitle'>📥 Import Transaksi dari Excel</div>",
+        unsafe_allow_html=True,
+    )
 
     file = st.file_uploader("Upload file Excel", type=["xlsx"])
 
@@ -796,7 +916,7 @@ elif menu == "📥 Import Excel":
                     r["Debit"],
                     r["Kredit"],
                     r["Bulan"],
-                    r["Tahun"]
+                    r["Tahun"],
                 )
 
             st.success("✅ Import berhasil")
@@ -805,28 +925,13 @@ elif menu == "📥 Import Excel":
 
 # Footer
 st.markdown("---")
-st.markdown("""
+st.markdown(
+    """
 <div style='text-align: center; color: #888; padding: 20px;'>
     <p style='margin: 0;'>💰 <strong>Aplikasi Akuntansi Profesional</strong></p>
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
-""", unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+""",
+    unsafe_allow_html=True,
+)
 
