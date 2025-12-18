@@ -249,39 +249,39 @@ def export_excel_multi(df):
     # =====================
     # ISI DATA TRANSAKSI
     # =====================
-for r in dataframe_to_rows(grup[headers], index=False, header=False):
-    for col, val in enumerate(r, start=1):
-        cell = ws_main.cell(row=current_row, column=col, value=val)
-        cell.border = thin_border
+    for r in dataframe_to_rows(grup[headers], index=False, header=False):
+        for col, val in enumerate(r, start=1):
+            cell = ws_main.cell(row=current_row, column=col, value=val)
+            cell.border = thin_border
+        current_row += 1
+
+    # =====================
+    # TOTAL PER BULAN
+    # =====================
+    total_debit_bulan = grup["Debit"].sum()
+    total_kredit_bulan = grup["Kredit"].sum()
+    saldo_bulan = total_debit_bulan - total_kredit_bulan
+
+    ws_main.cell(row=current_row, column=3, value="TOTAL BULAN INI").font = Font(bold=True)
+    ws_main.cell(row=current_row, column=4, value=total_debit_bulan).font = Font(bold=True)
+    ws_main.cell(row=current_row, column=5, value=total_kredit_bulan).font = Font(bold=True)
+
+    for col in [3, 4, 5]:
+        ws_main.cell(row=current_row, column=col).border = thin_border
+        ws_main.cell(row=current_row, column=col).fill = PatternFill("solid", fgColor="FFF2CC")
+
     current_row += 1
 
-# =====================
-# TOTAL PER BULAN
-# =====================
-total_debit_bulan = grup["Debit"].sum()
-total_kredit_bulan = grup["Kredit"].sum()
-saldo_bulan = total_debit_bulan - total_kredit_bulan
+    ws_main.cell(row=current_row, column=3, value="SALDO BULAN INI").font = Font(bold=True)
+    ws_main.cell(row=current_row, column=4, value=saldo_bulan).font = Font(bold=True)
 
-ws_main.cell(row=current_row, column=3, value="TOTAL BULAN INI").font = Font(bold=True)
-ws_main.cell(row=current_row, column=4, value=total_debit_bulan).font = Font(bold=True)
-ws_main.cell(row=current_row, column=5, value=total_kredit_bulan).font = Font(bold=True)
+    ws_main.cell(row=current_row, column=4).border = thin_border
+    ws_main.cell(row=current_row, column=4).fill = PatternFill("solid", fgColor="E2EFDA")
 
-for col in [3, 4, 5]:
-    ws_main.cell(row=current_row, column=col).border = thin_border
-    ws_main.cell(row=current_row, column=col).fill = PatternFill("solid", fgColor="FFF2CC")
+    current_row += 2
 
-current_row += 1
-
-ws_main.cell(row=current_row, column=3, value="SALDO BULAN INI").font = Font(bold=True)
-ws_main.cell(row=current_row, column=4, value=saldo_bulan).font = Font(bold=True)
-
-ws_main.cell(row=current_row, column=4).border = thin_border
-ws_main.cell(row=current_row, column=4).fill = PatternFill("solid", fgColor="E2EFDA")
-
-current_row += 2
-
-    for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
-        ws_main.column_dimensions[col].width = w
+        for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
+            ws_main.column_dimensions[col].width = w
 
     # =====================
     # SHEET 2: JURNAL UMUM
@@ -784,6 +784,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
