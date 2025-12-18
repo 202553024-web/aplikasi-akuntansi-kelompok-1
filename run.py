@@ -394,13 +394,14 @@ def export_excel_multi(df):
     neraca = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
     neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
 
-        headers = ["Akun", "Debit", "Kredit", "Saldo"]
+    headers = ["Akun", "Debit", "Kredit", "Saldo"]
     for col_num, header in enumerate(headers, start=1):
         cell = ws_ns.cell(row=3, column=col_num, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = header_fill
         cell.border = thin_border
+
     
     # Data
     for i, r in enumerate(dataframe_to_rows(neraca[headers], index=False, header=False), start=4):
@@ -558,3 +559,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
