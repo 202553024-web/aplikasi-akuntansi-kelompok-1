@@ -416,7 +416,7 @@ elif menu == "📝 Input Transaksi":
     with st.form("form_transaksi", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
-        with col1:
+with col1:
     tgl = st.datetime_input(
         "📅 Tanggal & Waktu Transaksi",
         datetime.now()
@@ -745,6 +745,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
