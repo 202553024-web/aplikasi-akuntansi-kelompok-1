@@ -406,7 +406,7 @@ def export_excel_multi(df):
     ws_ns.column_dimensions['C'].width = 20
     ws_ns.column_dimensions['D'].width = 20
 
-    # ============================
+       # ============================
     # SHEET 5: LAPORAN LABA RUGI
     # ============================
     ws_lr = wb.create_sheet("Laporan Laba Rugi")
@@ -415,7 +415,7 @@ def export_excel_multi(df):
     ws_lr.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws_lr.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
     
-        ws_lr.cell(row=2, column=1, value="Keterangan").font = Font(bold=True)
+    ws_lr.cell(row=2, column=1, value="Keterangan").font = Font(bold=True)
     ws_lr.cell(row=2, column=2, value="Jumlah").font = Font(bold=True)
     ws_lr.cell(row=2, column=1).border = thin_border
     ws_lr.cell(row=2, column=2).border = thin_border
@@ -818,3 +818,4 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
