@@ -233,9 +233,8 @@ def export_excel_multi(df):
 df_sorted = df.sort_values(
     ["Tahun", "Bulan", "Tanggal"]
 )
-
-    current_row = 1
-    tahun_sekarang = None
+        current_row = 1
+        tahun_sekarang = None
 
     for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
         if tahun != tahun_sekarang:
@@ -867,5 +866,6 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
