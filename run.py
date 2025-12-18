@@ -255,7 +255,7 @@ def export_excel_multi(df):
             current_row += 1
             tahun_sekarang = tahun
 
-        nama_bulan = calendar.month_name[bulan].capitalize()
+        nama_bulan = str(bulan)
         ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
         cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
         cell.font = Font(bold=True)
@@ -783,6 +783,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
