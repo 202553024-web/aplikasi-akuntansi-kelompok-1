@@ -232,6 +232,9 @@ def laporan_laba_rugi(df):
 # ============================
 # FUNGSI EXPORT EXCEL
 # ============================
+# ============================
+# FUNGSI EXPORT EXCEL
+# ============================
 def export_excel_multi(df):
     output = io.BytesIO()
     wb = Workbook()
@@ -259,9 +262,11 @@ def export_excel_multi(df):
     df_sorted = df.sort_values(["Tahun", "Bulan", "Tanggal"])
 
     current_row = 1
-tahun_sekarang = None
+    tahun_sekarang = None   # ✅ SEJAJAR
 
     for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+        # kode di dalam loop
+        pass
 
     if tahun != tahun_sekarang:
         ws_main.merge_cells(
@@ -933,6 +938,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
