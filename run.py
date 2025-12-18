@@ -210,239 +210,117 @@ def laporan_laba_rugi(df):
 def export_excel_multi(df):
     output = io.BytesIO()
     wb = Workbook()
-    
-    # Definisi Border
+
+    # =====================
+    # STYLE
+    # =====================
     thin_border = Border(
         left=Side(style='thin'),
         right=Side(style='thin'),
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
-    
-    # Definisi Warna
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    title_fill = PatternFill(start_color="B4C7E7", end_color="B4C7E7", fill_type="solid")
-    year_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-    
-    # ============================
+
+    header_fill = PatternFill("solid", fgColor="4472C4")
+    title_fill = PatternFill("solid", fgColor="B4C7E7")
+    year_fill = PatternFill("solid", fgColor="D9E1F2")
+
+    # =====================
     # SHEET 1: LAPORAN KEUANGAN
-    # ============================
+    # =====================
     ws_main = wb.active
     ws_main.title = "Laporan Keuangan"
 
-df_sorted = df.sort_values(
-    ["Tahun", "Bulan", "Tanggal"]
-)
+    df_sorted = df.sort_values(["Tahun", "Bulan", "Tanggal"])
 
-current_row = 1
-tahun_sekarang = None
+    current_row = 1
+    tahun_sekarang = None
 
-for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+
         if tahun != tahun_sekarang:
             ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
             cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
             cell.font = Font(bold=True, size=14)
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = Alignment(horizontal="center")
             cell.fill = year_fill
-            for col in range(1, 6):
-                ws_main.cell(row=current_row, column=col).border = thin_border
             current_row += 1
             tahun_sekarang = tahun
 
         nama_bulan = calendar.month_name[bulan].capitalize()
         ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
         cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
-        cell.font = Font(bold=True, size=11)
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
         cell.fill = title_fill
-        for col in range(1, 6):
-            ws_main.cell(row=current_row, column=col).border = thin_border
         current_row += 1
 
         headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-        for col_num, header in enumerate(headers, start=1):
-            cell = ws_main.cell(row=current_row, column=col_num, value=header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = header_fill
-            cell.border = thin_border
+        for col, h in enumerate(headers, start=1):
+            c = ws_main.cell(row=current_row, column=col, value=h)
+            c.font = Font(bold=True, color="FFFFFF")
+            c.fill = header_fill
+            c.border = thin_border
         current_row += 1
-        
-        for r in dataframe_to_rows(grup[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws_main.cell(row=current_row, column=c_idx)
+
+        for r in dataframe_to_rows(grup[headers], index=False, header=False):
+            for col, val in enumerate(r, start=1):
+                cell = ws_main.cell(row=current_row, column=col, value=val)
                 cell.border = thin_border
-                
-                if c_idx in [4, 5]:
-                    val = int(val) if pd.notna(val) and val != 0 else 0
-                    if val == 0:
-                        cell.value = "Rp                    -"
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                    else:
-                        cell.value = val
-                        cell.number_format = '"Rp"#,##0.00'
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                else:
-                    cell.value = val
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
             current_row += 1
+
         current_row += 1
 
-        ws_main.column_dimensions['A'].width = 20
-        ws_main.column_dimensions['B'].width = 18
-        ws_main.column_dimensions['C'].width = 20
-        ws_main.column_dimensions['D'].width = 20
-        ws_main.column_dimensions['E'].width = 20
+    for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
+        ws_main.column_dimensions[col].width = w
 
-    # ============================
+    # =====================
     # SHEET 2: JURNAL UMUM
-    # ============================
-        ws_jurnal = wb.create_sheet("Jurnal Umum")
-        ws_jurnal.cell(row=1, column=1, value="Jurnal Umum").font = Font(bold=True, size=14)
-        ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-        ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
-    
-        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-        for col_num, header in enumerate(headers, start=1):
-            cell = ws_jurnal.cell(row=2, column=col_num, value=header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = header_fill
-            cell.border = thin_border
-    
-        for r_idx, r in enumerate(dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False), start=3):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws_jurnal.cell(row=r_idx, column=c_idx)
-                cell.border = thin_border
-                if c_idx in [4, 5]:
-                    val = int(val) if pd.notna(val) and val != 0 else 0
-                    if val == 0:
-                        cell.value = "Rp                    -"
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                    else:
-                        cell.value = val
-                        cell.number_format = '"Rp"#,##0.00'
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                else:
-                    cell.value = val
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
-    
-        ws_jurnal.column_dimensions['A'].width = 20
-        ws_jurnal.column_dimensions['B'].width = 18
-        ws_jurnal.column_dimensions['C'].width = 20
-        ws_jurnal.column_dimensions['D'].width = 20
-        ws_jurnal.column_dimensions['E'].width = 20
+    # =====================
+    ws_jurnal = wb.create_sheet("Jurnal Umum")
+    ws_jurnal.append(["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"])
 
-    # ============================
+    for r in dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]],
+                               index=False, header=False):
+        ws_jurnal.append(r)
+
+    # =====================
     # SHEET 3: BUKU BESAR
-    # ============================
-        ws_bb = wb.create_sheet("Buku Besar")
-        bb = buku_besar(df_bulan)
-        current_row_bb = 1
-    
-        for akun, data in bb.items():
-            ws_bb.cell(row=current_row_bb, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True, size=12)
-            ws_bb.merge_cells(start_row=current_row_bb, start_column=1, end_row=current_row_bb, end_column=6)
-            current_row_bb += 1
-        
-            headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]
-            for col_num, header in enumerate(headers, start=1):
-                cell = ws_bb.cell(row=current_row_bb, column=col_num, value=header)
-                cell.font = Font(bold=True, color="FFFFFF")
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.fill = header_fill
-                cell.border = thin_border
-            current_row_bb += 1
-        
-            for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]], index=False, header=False):
-                for c_idx, val in enumerate(r, start=1):
-                    cell = ws_bb.cell(row=current_row_bb, column=c_idx)
-                    cell.border = thin_border
-                    if c_idx in [4, 5, 6]:
-                        val = int(val) if pd.notna(val) and val != 0 else 0
-                        cell.value = val
-                        cell.number_format = '"Rp"#,##0.00'
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                    else:
-                        cell.value = val
-                        cell.alignment = Alignment(horizontal="left", vertical="center")
-                current_row_bb += 1
-            current_row_bb += 2  # Spasi antar akun
-    
-        for col in ['A', 'B', 'C', 'D', 'E', 'F']:
-            ws_bb.column_dimensions[col].width = 18
+    # =====================
+    ws_bb = wb.create_sheet("Buku Besar")
+    bb = buku_besar(df)
+    row = 1
 
-    # ============================
+    for akun, data in bb.items():
+        ws_bb.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        ws_bb.cell(row=row, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True)
+        row += 1
+
+        ws_bb.append(["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"])
+        for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]],
+                                   index=False, header=False):
+            ws_bb.append(r)
+        row += len(data) + 2
+
+    # =====================
     # SHEET 4: NERACA SALDO
-    # ============================
+    # =====================
     ws_ns = wb.create_sheet("Neraca Saldo")
-    ns = neraca_saldo(df_bulan)
-    ws_ns.cell(row=1, column=1, value="Neraca Saldo").font = Font(bold=True, size=14)
-    ws_ns.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-    ws_ns.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
-    
-    headers = ["Akun", "Debit", "Kredit", "Saldo"]
-    for col_num, header in enumerate(headers, start=1):
-        cell = ws_ns.cell(row=2, column=col_num, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.fill = header_fill
-        cell.border = thin_border
-    
-    for r_idx, r in enumerate(dataframe_to_rows(ns.reset_index()[["Akun", "Debit", "Kredit", "Saldo"]], index=False, header=False), start=3):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws_ns.cell(row=r_idx, column=c_idx)
-            cell.border = thin_border
-            if c_idx in [2, 3, 4]:
-                val = int(val) if pd.notna(val) and val != 0 else 0
-                cell.value = val
-                cell.number_format = '"Rp"#,##0.00'
-                cell.alignment = Alignment(horizontal="right", vertical="center")
-            else:
-                cell.value = val
-                cell.alignment = Alignment(horizontal="left", vertical="center")
-    
-    ws_ns.column_dimensions['A'].width = 18
-    ws_ns.column_dimensions['B'].width = 20
-    ws_ns.column_dimensions['C'].width = 20
-    ws_ns.column_dimensions['D'].width = 20
+    ns = neraca_saldo(df).reset_index()
+    ws_ns.append(["Akun", "Debit", "Kredit", "Saldo"])
+    for r in dataframe_to_rows(ns, index=False, header=False):
+        ws_ns.append(r)
 
-       # ============================
-    # SHEET 5: LAPORAN LABA RUGI
-    # ============================
-    ws_lr = wb.create_sheet("Laporan Laba Rugi")
-    lr = laporan_laba_rugi(df_bulan)
-    ws_lr.cell(row=1, column=1, value="Laporan Laba Rugi").font = Font(bold=True, size=14)
-    ws_lr.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-    ws_lr.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
-    
-    ws_lr.cell(row=2, column=1, value="Keterangan").font = Font(bold=True)
-    ws_lr.cell(row=2, column=2, value="Jumlah").font = Font(bold=True)
-    ws_lr.cell(row=2, column=1).border = thin_border
-    ws_lr.cell(row=2, column=2).border = thin_border
-    ws_lr.cell(row=2, column=1).alignment = Alignment(horizontal="left", vertical="center")
-    ws_lr.cell(row=2, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    
-    row_lr = 3
-    ws_lr.cell(row=row_lr, column=1, value="Total Pendapatan").border = thin_border
-    ws_lr.cell(row=row_lr, column=2, value=lr["Total Pendapatan"]).border = thin_border
-    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
-    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    row_lr += 1
-    
-    ws_lr.cell(row=row_lr, column=1, value="Total Beban").border = thin_border
-    ws_lr.cell(row=row_lr, column=2, value=lr["Total Beban"]).border = thin_border
-    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
-    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    row_lr += 1
-    
-    ws_lr.cell(row=row_lr, column=1, value="Laba/Rugi").border = thin_border
-    ws_lr.cell(row=row_lr, column=2, value=lr["Laba/Rugi"]).border = thin_border
-    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
-    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    
-    ws_lr.column_dimensions['A'].width = 20
-    ws_lr.column_dimensions['B'].width = 20
+    # =====================
+    # SHEET 5: LABA RUGI
+    # =====================
+    ws_lr = wb.create_sheet("Laba Rugi")
+    lr = laporan_laba_rugi(df)
+
+    ws_lr.append(["Keterangan", "Jumlah"])
+    ws_lr.append(["Total Pendapatan", lr["Total Pendapatan"]])
+    ws_lr.append(["Total Beban", lr["Total Beban"]])
+    ws_lr.append(["Laba / Rugi", lr["Laba/Rugi"]])
 
     wb.save(output)
     output.seek(0)
@@ -867,11 +745,3 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
