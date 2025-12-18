@@ -437,13 +437,18 @@ elif menu == "📝 Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True)
 
     with st.form("form_transaksi", clear_on_submit=True):
-        # Pilih tahun bebas
-        tahun = st.selectbox("📆 Tahun", list(range(2020, datetime.now().year + 2)), index=5)
+        # Pengguna isi periode sendiri
+        periode = st.text_input("🗓️ Periode (YYYY-MM)", value=datetime.now().strftime("%Y-%m"))
+        try:
+            tahun_input, bulan_input = map(int, periode.split("-"))
+        except:
+            st.warning("Format periode harus YYYY-MM, misal 2025-12")
+            st.stop()
 
-        # Pilih tanggal (tanpa harus pilih bulan lagi)
-        tanggal = st.date_input(
+        # Input tanggal saja
+        tanggal_input = st.date_input(
             "📅 Tanggal Transaksi",
-            value=datetime(tahun, 1, 1).date()
+            value=datetime(tahun_input, bulan_input, 1).date()
         )
 
         akun = st.selectbox("🏦 Pilih Akun", [
@@ -460,13 +465,12 @@ elif menu == "📝 Input Transaksi":
             elif not ket.strip():
                 st.error("❌ Keterangan harus diisi!")
             else:
-                # Simpan tanggal lengkap dengan tahun, bulan, hari
-                tgl_waktu = datetime.combine(tanggal, datetime.now().time())
+                tgl_waktu = datetime.combine(tanggal_input, datetime.now().time())
 
                 tambah_transaksi({
                     "Tanggal": tgl_waktu,
-                    "Tahun": tgl_waktu.year,
-                    "Bulan": tgl_waktu.month,
+                    "Tahun": tahun_input,
+                    "Bulan": bulan_input,
                     "Akun": akun,
                     "Keterangan": ket,
                     "Debit": int(debit),
@@ -475,7 +479,6 @@ elif menu == "📝 Input Transaksi":
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
                 st.rerun()
-
 
 elif menu == "📋 Lihat Transaksi":
     st.markdown("<div class='subtitle'>📋 Daftar Semua Transaksi</div>", unsafe_allow_html=True)
@@ -623,35 +626,42 @@ elif menu == "📥 Import Excel":
             st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
             st.rerun()
 
-
 elif menu == "📤 Export Excel":
     df = pd.DataFrame(st.session_state.transaksi)
 
-    if "Tahun" not in df.columns:
-        df["Tahun"] = df["Tanggal"].dt.year
-
-    if "Bulan" not in df.columns:
-        df["Bulan"] = df["Tanggal"].dt.month
-
     st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
-    if total_transaksi == 0:
+
+    if len(df) == 0:
         st.info("Belum ada transaksi untuk diexport.")
     else:
-        st.markdown(f"Total transaksi: {total_transaksi}")
+        # Filter periode sebelum export
+        periode_filter = st.text_input("Filter Periode (YYYY-MM)", value=datetime.now().strftime("%Y-%m"))
         try:
-            excel_data = export_excel_multi(df)
+            tahun_filter, bulan_filter = map(int, periode_filter.split("-"))
+            df_filtered = df[(df["Tahun"] == tahun_filter) & (df["Bulan"] == bulan_filter)]
+        except:
+            st.warning("Format periode harus YYYY-MM, misal 2025-12")
+            st.stop()
 
-            # --- DOWNLOAD BUTTON ---
-            st.download_button(
-                "Download Laporan Akuntansi.xlsx",
-                excel_data,
-                file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            st.success("File siap diunduh!")
+        if df_filtered.empty:
+            st.info("Tidak ada transaksi di periode ini.")
+        else:
+            total_debit = df_filtered["Debit"].sum()
+            total_kredit = df_filtered["Kredit"].sum()
+            saldo = total_debit - total_kredit
+            st.info(f"Total Debit: {format_rupiah_angka(total_debit)} | Total Kredit: {format_rupiah_angka(total_kredit)} | Saldo: {format_rupiah_angka(saldo)}")
 
-        except Exception as e:
-            st.error(f"Error saat generate file Excel: {e}")
+            try:
+                excel_data = export_excel_multi(df_filtered)  # gunakan fungsi export_excel_multi yang sudah ada
+                st.download_button(
+                    "Download Laporan Akuntansi.xlsx",
+                    excel_data,
+                    file_name=f"laporan_akuntansi_{periode_filter.replace('-', '')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success("File siap diunduh!")
+            except Exception as e:
+                st.error(f"Error saat generate file Excel: {e}")
 
 # ===================
 # Footer
@@ -663,6 +673,7 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
