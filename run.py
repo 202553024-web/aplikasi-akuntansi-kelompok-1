@@ -357,7 +357,6 @@ for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
     # =====================
     # SIMPAN FILE
     # =====================
-    output = io.BytesIO()
     wb.save(output)
     output.seek(0)
 
@@ -812,6 +811,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
