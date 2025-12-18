@@ -288,11 +288,11 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
             current_row += 1
         current_row += 1
 
-    ws_main.column_dimensions['A'].width = 20
-    ws_main.column_dimensions['B'].width = 18
-    ws_main.column_dimensions['C'].width = 20
-    ws_main.column_dimensions['D'].width = 20
-    ws_main.column_dimensions['E'].width = 20
+        ws_main.column_dimensions['A'].width = 20
+        ws_main.column_dimensions['B'].width = 18
+        ws_main.column_dimensions['C'].width = 20
+        ws_main.column_dimensions['D'].width = 20
+        ws_main.column_dimensions['E'].width = 20
 
     # ============================
     # SHEET 2: JURNAL UMUM
