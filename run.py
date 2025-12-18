@@ -393,7 +393,8 @@ def export_excel_multi(df):
     neraca = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
     neraca["Saldo"] = neraca["Debit"] - neraca["Kredit"]
 
-    headers = ["Akun", "Debit", "Kredit    # ============================
+    headers = ["Akun", "Debit", "Kredit   
+    # ============================
     # SHEET 5: LAPORAN LABA RUGI
     # ============================
     ws_lr = wb.create_sheet("Laporan Laba Rugi")
@@ -662,3 +663,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
