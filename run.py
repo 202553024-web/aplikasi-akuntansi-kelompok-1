@@ -259,10 +259,10 @@ def export_excel_multi(df):
     df_sorted = df.sort_values(["Tahun", "Bulan", "Tanggal"])
 
     current_row = 1
-    tahun_sekarang = None
+tahun_sekarang = None
 
+    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
 
-for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
     if tahun != tahun_sekarang:
         ws_main.merge_cells(
             start_row=current_row, start_column=1, end_row=current_row, end_column=5
@@ -933,5 +933,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 
