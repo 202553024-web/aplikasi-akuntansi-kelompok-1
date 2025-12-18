@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from datetime import datetime
+from datetime import datetime, time
 import io
 import calendar
 from openpyxl import Workbook
@@ -21,7 +21,6 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Main Title */
     .main-title {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 30px;
@@ -42,8 +41,6 @@ st.markdown("""
         margin: 10px 0 0 0;
         opacity: 0.9;
     }
-    
-    /* Subtitle */
     .subtitle {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         padding: 20px;
@@ -55,8 +52,6 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 3px 10px rgba(0,0,0,0.15);
     }
-    
-    /* Cards */
     .metric-card {
         background: white;
         padding: 25px;
@@ -65,8 +60,6 @@ st.markdown("""
         border-left: 5px solid #667eea;
         margin: 10px 0;
     }
-    
-    /* Buttons */
     .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: white !important;
@@ -82,43 +75,36 @@ st.markdown("""
         transform: translateY(-2px) !important;
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6) !important;
     }
-    
     /* Sidebar */
     .css-1d391kg, [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
     }
-    
     /* Form inputs */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>select {
         border-radius: 8px !important;
         border: 2px solid #e0e0e0 !important;
         padding: 10px !important;
     }
-    
     /* DataFrames */
     .dataframe {
         border-radius: 10px !important;
         overflow: hidden !important;
     }
-    
     /* Info boxes */
     .stAlert {
         border-radius: 10px !important;
         padding: 15px !important;
     }
-    
     /* Metrics */
     [data-testid="stMetricValue"] {
         font-size: 28px !important;
         font-weight: 700 !important;
         color: #667eea !important;
     }
-    
     /* Success/Error messages */
     .element-container:has(.stSuccess) {
         animation: slideIn 0.5s ease;
     }
-    
     @keyframes slideIn {
         from {
             opacity: 0;
@@ -147,13 +133,29 @@ if "transaksi" not in st.session_state:
     st.session_state.transaksi = []
 
 # ============================
-# FORMAT RUPIAH
+# FORMAT RUPIAH CUSTOM (Rp 4.000.000,00)
 # ============================
-def to_rp(n):
+def to_rp_custom(n):
     try:
-        return "Rp {:,}".format(int(n)).replace(",", ".")
+        # format currency dengan gunakan titik sebagai ribuan dan koma sebagai desimal
+        s = f"Rp {int(n):,},00"
+        s = s.replace(",", ".")  # ganti koma ke titik ribuan
+        return s
     except:
-        return "Rp 0"
+        return "Rp -"
+
+# ============================
+# FORMAT tanggal ke string yyyy-mm-dd HH:mm:ss
+# ============================
+def format_tgl_waktu(dt):
+    if pd.isna(dt):
+        return ""
+    if isinstance(dt, str):
+        try:
+            dt = pd.to_datetime(dt)
+        except:
+            return dt
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 # ============================
 # KLASIFIKASI AKUN
@@ -181,6 +183,7 @@ def buku_besar(df):
     buku_besar_data = {}
     for akun in akun_list:
         df_akun = df[df["Akun"] == akun].copy()
+        df_akun = df_akun.sort_values("Tanggal")
         df_akun["Saldo"] = df_akun["Debit"].cumsum() - df_akun["Kredit"].cumsum()
         buku_besar_data[akun] = df_akun
     return buku_besar_data
@@ -191,9 +194,7 @@ def neraca_saldo(df):
     return grouped
 
 def laporan_laba_rugi(df):
-    # PERBAIKAN: Pendapatan dicatat di DEBIT, jadi kita ambil debit untuk pendapatan
     total_pendapatan = df[df["Akun"].isin(pendapatan_akun)]["Debit"].sum()
-    # PERBAIKAN: Beban dicatat di KREDIT, jadi kita ambil kredit untuk beban
     total_beban = df[df["Akun"].isin(beban_akun)]["Kredit"].sum()
     laba_rugi = total_pendapatan - total_beban
     return {
@@ -203,248 +204,343 @@ def laporan_laba_rugi(df):
     }
 
 # ============================
-# FUNGSI EXPORT EXCEL
+# FUNCTIONS EXPORT EXCEL WITH TEMPLATE PER BULAN & TAHUN
 # ============================
 def export_excel_multi(df):
     output = io.BytesIO()
     wb = Workbook()
     
-    # Definisi Border
-    thin_border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-    
-    # Definisi Warna
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    title_fill = PatternFill(start_color="B4C7E7", end_color="B4C7E7", fill_type="solid")
+    # Styles
+    thin_border = Border(left=Side(style='thin'),right=Side(style='thin'),
+                         top=Side(style='thin'),bottom=Side(style='thin'))
+    header_fill = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
+    title_fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
     year_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    total_fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+    font_header = Font(color="FFFFFF", bold=True)
+    font_title = Font(bold=True)
     
-    # ============================
-    # SHEET 1: LAPORAN KEUANGAN
-    # ============================
+    # Formatting number to Rupiah with comma decimal (like "Rp 4.000.000,00")
+    def cell_set_rp(cell, value):
+        if value == 0:
+            cell.value = "Rp -"
+        else:
+            cell.value = f"Rp {value:,.2f}"
+            cell.value = cell.value.replace(",", "X").replace(".", ",").replace("X", ".")  # swap "." and ","
+        cell.alignment = Alignment(horizontal="right", vertical="center")
+        cell.border = thin_border
+    
+    # ===============================
+    # Sheet 1: LAPORAN KEUANGAN (group by year & month)
+    # ===============================
     ws_main = wb.active
     ws_main.title = "Laporan Keuangan"
-
+    
     df["Tanggal"] = pd.to_datetime(df["Tanggal"])
-    df["Bulan"] = df["Tanggal"].dt.month
+    df = df.sort_values("Tanggal")
     df["Tahun"] = df["Tanggal"].dt.year
-    df_sorted = df.sort_values("Tanggal")
-
+    df["Bulan"] = df["Tanggal"].dt.month
+    
     current_row = 1
-    tahun_sekarang = None
-
-    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
-        if tahun != tahun_sekarang:
-            ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-            cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
-            cell.font = Font(bold=True, size=14)
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = year_fill
-            for col in range(1, 6):
-                ws_main.cell(row=current_row, column=col).border = thin_border
-            current_row += 1
-            tahun_sekarang = tahun
-
-        nama_bulan = calendar.month_name[bulan].capitalize()
+    last_tahun = None
+    
+    for tahun, df_tahun in df.groupby("Tahun"):
+        # tambah row tahun
         ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-        cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
-        cell.font = Font(bold=True, size=11)
+        cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
+        cell.font = Font(bold=True, size=14)
         cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.fill = title_fill
-        for col in range(1, 6):
+        cell.fill = year_fill
+        for col in range(1,6):
             ws_main.cell(row=current_row, column=col).border = thin_border
         current_row += 1
-
-        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-        for col_num, header in enumerate(headers, start=1):
-            cell = ws_main.cell(row=current_row, column=col_num, value=header)
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = header_fill
-            cell.border = thin_border
-        current_row += 1
         
-        for r in dataframe_to_rows(grup[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws_main.cell(row=current_row, column=c_idx)
+        for bulan, df_bulan in df_tahun.groupby("Bulan"):
+            # tambah row bulan
+            nama_bulan = calendar.month_name[bulan]
+            ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+            cell_bulan = ws_main.cell(row=current_row, column=1, value=f"Bulan {nama_bulan}")
+            cell_bulan.font = Font(bold=True, size=11)
+            cell_bulan.alignment = Alignment(horizontal="center", vertical="center")
+            cell_bulan.fill = title_fill
+            for col in range(1,6):
+                ws_main.cell(row=current_row, column=col).border = thin_border
+            current_row +=1
+            
+            # headers
+            headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+            for col_num, header in enumerate(headers, start=1):
+                cell = ws_main.cell(row=current_row, column=col_num, value=header)
+                cell.font = font_header
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.fill = header_fill
                 cell.border = thin_border
+            current_row +=1
+            
+            # isi data
+            for _, row in df_bulan.iterrows():
+                ws_main.cell(row=current_row, column=1, value=format_tgl_waktu(row["Tanggal"])).border = thin_border
+                ws_main.cell(row=current_row, column=1).alignment = Alignment(horizontal="left", vertical="center")
+                ws_main.cell(row=current_row, column=2, value=row["Akun"]).border = thin_border
+                ws_main.cell(row=current_row, column=2).alignment = Alignment(horizontal="left", vertical="center")
+                ws_main.cell(row=current_row, column=3, value=row["Keterangan"]).border = thin_border
+                ws_main.cell(row=current_row, column=3).alignment = Alignment(horizontal="left", vertical="center")
                 
-                if c_idx in [4, 5]:
-                    val = int(val) if pd.notna(val) and val != 0 else 0
-                    if val == 0:
-                        cell.value = "Rp                    -"
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
-                    else:
-                        cell.value = val
-                        cell.number_format = '"Rp"#,##0.00'
-                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                debit_cell = ws_main.cell(row=current_row, column=4)
+                kredit_cell = ws_main.cell(row=current_row, column=5)
+                
+                if row["Debit"] == 0:
+                    debit_cell.value = "Rp -"
                 else:
-                    cell.value = val
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
-            current_row += 1
-        current_row += 1
+                    debit_cell.value = f"Rp {row['Debit']:,}.00".replace(",", ".")
+                debit_cell.alignment = Alignment(horizontal="right", vertical="center")
+                debit_cell.border = thin_border
+                
+                if row["Kredit"] == 0:
+                    kredit_cell.value = "Rp -"
+                else:
+                    kredit_cell.value = f"Rp {row['Kredit']:,}.00".replace(",", ".")
+                kredit_cell.alignment = Alignment(horizontal="right", vertical="center")
+                kredit_cell.border = thin_border
+                
+                current_row += 1
+            
+            # total per bulan
+            total_debit = df_bulan["Debit"].sum()
+            total_kredit = df_bulan["Kredit"].sum()
+            
+            # Tambahkan baris total debit/kredit
+            ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=3)
+            cell_total = ws_main.cell(row=current_row, column=1, value="TOTAL")
+            cell_total.font = Font(bold=True)
+            cell_total.alignment = Alignment(horizontal="center", vertical="center")
+            cell_total.fill = total_fill
+            for col in range(1,6):
+                ws_main.cell(row=current_row, column=col).border = thin_border
+                
+            debit_cell = ws_main.cell(row=current_row, column=4)
+            kredit_cell = ws_main.cell(row=current_row, column=5)
+            
+            if total_debit == 0:
+                debit_cell.value = "Rp -"
+            else:
+                debit_cell.value = f"Rp {total_debit:,}.00".replace(",", ".")
+            debit_cell.font = Font(bold=True)
+            debit_cell.alignment = Alignment(horizontal="right", vertical="center")
+            debit_cell.fill = total_fill
+            debit_cell.border = thin_border
+            
+            if total_kredit == 0:
+                kredit_cell.value = "Rp -"
+            else:
+                kredit_cell.value = f"Rp {total_kredit:,}.00".replace(",", ".")
+            kredit_cell.font = Font(bold=True)
+            kredit_cell.alignment = Alignment(horizontal="right", vertical="center")
+            kredit_cell.fill = total_fill
+            kredit_cell.border = thin_border
+            
+            current_row += 2
 
-    ws_main.column_dimensions['A'].width = 20
-    ws_main.column_dimensions['B'].width = 18
-    ws_main.column_dimensions['C'].width = 20
-    ws_main.column_dimensions['D'].width = 20
-    ws_main.column_dimensions['E'].width = 20
+    for col, width in zip(['A','B','C','D','E'],[22,18,22,22,22]):
+        ws_main.column_dimensions[col].width = width
 
-    # ============================
-    # SHEET 2: JURNAL UMUM
-    # ============================
+    # ===============================
+    # Sheet 2: JURNAL UMUM (all transaksi)
+    # ===============================
     ws_jurnal = wb.create_sheet("Jurnal Umum")
-    ws_jurnal.cell(row=1, column=1, value="Jurnal Umum").font = Font(bold=True, size=14)
-    ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    ws_jurnal.sheet_view.showGridLines = False
     ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
-    
+    ws_jurnal.cell(row=1, column=1, value="Jurnal Umum").font = Font(bold=True, size=14)
+    ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center", vertical="center")
+
     headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
     for col_num, header in enumerate(headers, start=1):
         cell = ws_jurnal.cell(row=2, column=col_num, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
+        cell.font = font_header
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = header_fill
         cell.border = thin_border
-    
-    for r_idx, r in enumerate(dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False), start=3):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws_jurnal.cell(row=r_idx, column=c_idx)
-            cell.border = thin_border
-            if c_idx in [4, 5]:
-                val = int(val) if pd.notna(val) and val != 0 else 0
-                if val == 0:
-                    cell.value = "Rp                    -"
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-                else:
-                    cell.value = val
-                    cell.number_format = '"Rp"#,##0.00'
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-            else:
-                cell.value = val
-                cell.alignment = Alignment(horizontal="left", vertical="center")
-    
-    ws_jurnal.column_dimensions['A'].width = 20
-    ws_jurnal.column_dimensions['B'].width = 18
-    ws_jurnal.column_dimensions['C'].width = 20
-    ws_jurnal.column_dimensions['D'].width = 20
-    ws_jurnal.column_dimensions['E'].width = 20
 
-    # ============================
-    # SHEET 3: BUKU BESAR
-    # ============================
+    current_row = 3
+    for _, row in df.iterrows():
+        ws_jurnal.cell(row=current_row, column=1, value=format_tgl_waktu(row["Tanggal"])).alignment = Alignment(horizontal="left", vertical="center")
+        ws_jurnal.cell(row=current_row, column=1).border = thin_border
+        ws_jurnal.cell(row=current_row, column=2, value=row["Akun"]).alignment = Alignment(horizontal="left", vertical="center")
+        ws_jurnal.cell(row=current_row, column=2).border = thin_border
+        ws_jurnal.cell(row=current_row, column=3, value=row["Keterangan"]).alignment = Alignment(horizontal="left", vertical="center")
+        ws_jurnal.cell(row=current_row, column=3).border = thin_border
+        
+        debit_cell = ws_jurnal.cell(row=current_row, column=4)
+        kredit_cell = ws_jurnal.cell(row=current_row, column=5)
+        
+        if row["Debit"] == 0:
+            debit_cell.value = "Rp -"
+        else:
+            debit_cell.value = f"Rp {row['Debit']:,}.00".replace(",", ".")
+        debit_cell.alignment = Alignment(horizontal="right", vertical="center")
+        debit_cell.border = thin_border
+        
+        if row["Kredit"] == 0:
+            kredit_cell.value = "Rp -"
+        else:
+            kredit_cell.value = f"Rp {row['Kredit']:,}.00".replace(",", ".")
+        kredit_cell.alignment = Alignment(horizontal="right", vertical="center")
+        kredit_cell.border = thin_border
+        
+        current_row += 1
+
+    for col, width in zip(['A','B','C','D','E'],[22,18,22,22,22]):
+        ws_jurnal.column_dimensions[col].width = width
+
+    # ===============================
+    # Sheet 3: BUKU BESAR
+    # ===============================
     ws_bb = wb.create_sheet("Buku Besar")
     bb = buku_besar(df)
     current_row_bb = 1
-    
+
     for akun, data in bb.items():
-        ws_bb.cell(row=current_row_bb, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True, size=12)
         ws_bb.merge_cells(start_row=current_row_bb, start_column=1, end_row=current_row_bb, end_column=6)
+        ws_bb.cell(row=current_row_bb, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True, size=12)
+        ws_bb.cell(row=current_row_bb, column=1).alignment = Alignment(horizontal="center", vertical="center")
         current_row_bb += 1
-        
+
         headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]
         for col_num, header in enumerate(headers, start=1):
             cell = ws_bb.cell(row=current_row_bb, column=col_num, value=header)
-            cell.font = Font(bold=True, color="FFFFFF")
+            cell.font = font_header
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.fill = header_fill
             cell.border = thin_border
         current_row_bb += 1
-        
-        for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]], index=False, header=False):
-            for c_idx, val in enumerate(r, start=1):
-                cell = ws_bb.cell(row=current_row_bb, column=c_idx)
-                cell.border = thin_border
-                if c_idx in [4, 5, 6]:
-                    val = int(val) if pd.notna(val) and val != 0 else 0
-                    cell.value = val
-                    cell.number_format = '"Rp"#,##0.00'
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-                else:
-                    cell.value = val
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
-            current_row_bb += 1
-        current_row_bb += 2  # Spasi antar akun
-    
-    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
-        ws_bb.column_dimensions[col].width = 18
 
-    # ============================
-    # SHEET 4: NERACA SALDO
-    # ============================
+        for _, row in data.iterrows():
+            ws_bb.cell(row=current_row_bb, column=1, value=format_tgl_waktu(row["Tanggal"])).alignment = Alignment(horizontal="left", vertical="center")
+            ws_bb.cell(row=current_row_bb, column=1).border = thin_border
+            ws_bb.cell(row=current_row_bb, column=2, value=row["Akun"]).alignment = Alignment(horizontal="left", vertical="center")
+            ws_bb.cell(row=current_row_bb, column=2).border = thin_border
+            ws_bb.cell(row=current_row_bb, column=3, value=row["Keterangan"]).alignment = Alignment(horizontal="left", vertical="center")
+            ws_bb.cell(row=current_row_bb, column=3).border = thin_border
+
+            v_debit = row["Debit"]
+            v_kredit = row["Kredit"]
+            v_saldo = row["Saldo"]
+
+            debit_cell = ws_bb.cell(row=current_row_bb, column=4)
+            kredit_cell = ws_bb.cell(row=current_row_bb, column=5)
+            saldo_cell = ws_bb.cell(row=current_row_bb, column=6)
+
+            debit_cell.value = f"Rp {v_debit:,}.00".replace(",", ".") if v_debit!=0 else "Rp -"
+            debit_cell.alignment = Alignment(horizontal="right", vertical="center")
+            debit_cell.border = thin_border
+
+            kredit_cell.value = f"Rp {v_kredit:,}.00".replace(",", ".") if v_kredit!=0 else "Rp -"
+            kredit_cell.alignment = Alignment(horizontal="right", vertical="center")
+            kredit_cell.border = thin_border
+
+            saldo_cell.value = f"Rp {v_saldo:,}.00".replace(",", ".") if v_saldo!=0 else "Rp -"
+            saldo_cell.alignment = Alignment(horizontal="right", vertical="center")
+            saldo_cell.border = thin_border
+
+            current_row_bb += 1
+
+        # Tambah 1 baris kosong antar akun
+        current_row_bb += 2
+
+    for col, width in zip(['A','B','C','D','E','F'],[22,18,22,22,22,22]):
+        ws_bb.column_dimensions[col].width = width
+
+    # ===============================
+    # Sheet 4: NERACA SALDO
+    # ===============================
     ws_ns = wb.create_sheet("Neraca Saldo")
     ns = neraca_saldo(df)
-    ws_ns.cell(row=1, column=1, value="Neraca Saldo").font = Font(bold=True, size=14)
-    ws_ns.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws_ns.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
-    
+    ws_ns.cell(row=1, column=1, value="Neraca Saldo").font = Font(bold=True, size=14)
+    ws_ns.cell(row=1, column=1).alignment = Alignment(horizontal="center", vertical="center")
+
     headers = ["Akun", "Debit", "Kredit", "Saldo"]
     for col_num, header in enumerate(headers, start=1):
         cell = ws_ns.cell(row=2, column=col_num, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
+        cell.font = font_header
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = header_fill
         cell.border = thin_border
-    
-    for r_idx, r in enumerate(dataframe_to_rows(ns.reset_index()[["Akun", "Debit", "Kredit", "Saldo"]], index=False, header=False), start=3):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws_ns.cell(row=r_idx, column=c_idx)
-            cell.border = thin_border
-            if c_idx in [2, 3, 4]:
-                val = int(val) if pd.notna(val) and val != 0 else 0
-                cell.value = val
-                cell.number_format = '"Rp"#,##0.00'
-                cell.alignment = Alignment(horizontal="right", vertical="center")
-            else:
-                cell.value = val
-                cell.alignment = Alignment(horizontal="left", vertical="center")
-    
-    ws_ns.column_dimensions['A'].width = 18
-    ws_ns.column_dimensions['B'].width = 20
-    ws_ns.column_dimensions['C'].width = 20
-    ws_ns.column_dimensions['D'].width = 20
 
-       # ============================
-    # SHEET 5: LAPORAN LABA RUGI
-    # ============================
+    current_row = 3
+    for _, row in ns.reset_index().iterrows():
+        ws_ns.cell(row=current_row, column=1, value=row["Akun"]).alignment = Alignment(horizontal="left", vertical="center")
+        ws_ns.cell(row=current_row, column=1).border = thin_border
+        
+        debit_cell = ws_ns.cell(row=current_row, column=2)
+        kredit_cell = ws_ns.cell(row=current_row, column=3)
+        saldo_cell = ws_ns.cell(row=current_row, column=4)
+
+        debit_cell.value = f"Rp {row['Debit']:,}.00".replace(",", ".") if row['Debit'] != 0 else "Rp -"
+        debit_cell.alignment = Alignment(horizontal="right", vertical="center")
+        debit_cell.border = thin_border
+
+        kredit_cell.value = f"Rp {row['Kredit']:,}.00".replace(",", ".") if row['Kredit'] != 0 else "Rp -"
+        kredit_cell.alignment = Alignment(horizontal="right", vertical="center")
+        kredit_cell.border = thin_border
+
+        saldo_cell.value = f"Rp {row['Saldo']:,}.00".replace(",", ".") if row['Saldo'] != 0 else "Rp -"
+        saldo_cell.alignment = Alignment(horizontal="right", vertical="center")
+        saldo_cell.border = thin_border
+
+        current_row += 1
+
+    for col, width in zip(['A','B','C','D'], [22,22,22,22]):
+        ws_ns.column_dimensions[col].width = width
+
+    # ===============================
+    # Sheet 5: LAPORAN LABA RUGI
+    # ===============================
     ws_lr = wb.create_sheet("Laporan Laba Rugi")
     lr = laporan_laba_rugi(df)
-    ws_lr.cell(row=1, column=1, value="Laporan Laba Rugi").font = Font(bold=True, size=14)
-    ws_lr.cell(row=1, column=1).alignment = Alignment(horizontal="center")
     ws_lr.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
-    
+    ws_lr.cell(row=1, column=1, value="Laporan Laba Rugi").font = Font(bold=True, size=14)
+    ws_lr.cell(row=1, column=1).alignment = Alignment(horizontal="center", vertical="center")
+
     ws_lr.cell(row=2, column=1, value="Keterangan").font = Font(bold=True)
     ws_lr.cell(row=2, column=2, value="Jumlah").font = Font(bold=True)
-    ws_lr.cell(row=2, column=1).border = thin_border
-    ws_lr.cell(row=2, column=2).border = thin_border
     ws_lr.cell(row=2, column=1).alignment = Alignment(horizontal="left", vertical="center")
     ws_lr.cell(row=2, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    
-    row_lr = 3
-    ws_lr.cell(row=row_lr, column=1, value="Total Pendapatan").border = thin_border
-    ws_lr.cell(row=row_lr, column=2, value=lr["Total Pendapatan"]).border = thin_border
-    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
-    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    row_lr += 1
-    
-    ws_lr.cell(row=row_lr, column=1, value="Total Beban").border = thin_border
-    ws_lr.cell(row=row_lr, column=2, value=lr["Total Beban"]).border = thin_border
-    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
-    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    row_lr += 1
-    
-    ws_lr.cell(row=row_lr, column=1, value="Laba/Rugi").border = thin_border
-    ws_lr.cell(row=row_lr, column=2, value=lr["Laba/Rugi"]).border = thin_border
-    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
-    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
-    
-    ws_lr.column_dimensions['A'].width = 20
-    ws_lr.column_dimensions['B'].width = 20
+    ws_lr.cell(row=2, column=1).border = thin_border
+    ws_lr.cell(row=2, column=2).border = thin_border
+
+    # Baris nilai
+    rows = [
+        ("Total Pendapatan", lr["Total Pendapatan"]),
+        ("Total Beban", lr["Total Beban"]),
+        ("Laba/Rugi", lr["Laba/Rugi"])
+    ]
+    current_row = 3
+    for ket, val in rows:
+        ws_lr.cell(row=current_row, column=1, value=ket).border = thin_border
+        ws_lr.cell(row=current_row, column=1).alignment = Alignment(horizontal="left", vertical="center")
+
+        cell_jml = ws_lr.cell(row=current_row, column=2)
+        cell_jml.border = thin_border
+        cell_jml.alignment = Alignment(horizontal="right", vertical="center")
+
+        if ket == "Laba/Rugi" and val < 0:
+            # Show negatif dalam kurung
+            val_abs = abs(val)
+            cell_jml.value = f"(Rp {val_abs:,}.00)".replace(",", ".")
+        else:
+            if val == 0:
+                cell_jml.value = "Rp -"
+            else:
+                cell_jml.value = f"Rp {val:,}.00".replace(",", ".")
+        current_row += 1
+
+    ws_lr.column_dimensions['A'].width = 22
+    ws_lr.column_dimensions['B'].width = 22
 
     wb.save(output)
     output.seek(0)
+
     return output.getvalue()
 
 # ============================
@@ -453,8 +549,8 @@ def export_excel_multi(df):
 st.sidebar.markdown("### 📋 Menu Navigasi")
 menu = st.sidebar.radio(
     "",
-    ["🏠 Dashboard", "📝 Input Transaksi", "📋 Lihat Transaksi", "📖 Buku Besar", 
-     "⚖️ Neraca Saldo", "💰 Laporan Laba Rugi", "📈 Grafik", "📤 Export Excel"],
+    ["🏠 Dashboard", "📝 Input Transaksi", "📋 Lihat Transaksi", "📖 Buku Besar",
+     "⚖️ Neraca Saldo", "💰 Laporan Laba Rugi", "📈 Grafik", "📥 Import Excel", "📤 Export Excel"],
     label_visibility="collapsed"
 )
 
@@ -468,15 +564,15 @@ if total_transaksi > 0:
     df_temp = pd.DataFrame(st.session_state.transaksi)
     total_debit = df_temp["Debit"].sum()
     total_kredit = df_temp["Kredit"].sum()
-    st.sidebar.success(f"Total Debit: **{to_rp(total_debit)}**")
-    st.sidebar.warning(f"Total Kredit: **{to_rp(total_kredit)}**")
+    st.sidebar.success(f"Total Debit: **Rp {total_debit:,}.00**".replace(",", "."))
+    st.sidebar.warning(f"Total Kredit: **Rp {total_kredit:,}.00**".replace(",", "."))
 
 # ============================
 # 0. DASHBOARD
 # ============================
 if menu == "🏠 Dashboard":
     st.markdown("<div class='subtitle'>🏠 Dashboard Overview</div>", unsafe_allow_html=True)
-    
+
     if len(st.session_state.transaksi) == 0:
         st.info("👋 Selamat datang! Mulai dengan menambahkan transaksi pertama Anda.")
         st.markdown("""
@@ -487,41 +583,40 @@ if menu == "🏠 Dashboard":
         4. **Neraca Saldo** - Ringkasan semua akun
         5. **Laporan Laba Rugi** - Analisis profit/loss
         6. **Grafik** - Visualisasi data
-        7. **Export Excel** - Download laporan lengkap
+        7. **Import Excel** - Import transaksi dari Excel
+        8. **Export Excel** - Download laporan lengkap
         """)
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         lr = laporan_laba_rugi(df)
-        
-        # Metrics
+
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("📊 Total Transaksi", f"{len(df)}")
         with col2:
-            st.metric("💵 Total Pendapatan", to_rp(lr["Total Pendapatan"]))
+            st.metric("💵 Total Pendapatan", to_rp_custom(lr["Total Pendapatan"]))
         with col3:
-            st.metric("💸 Total Beban", to_rp(lr["Total Beban"]))
+            st.metric("💸 Total Beban", to_rp_custom(lr["Total Beban"]))
         with col4:
             if lr["Laba/Rugi"] >= 0:
-                st.metric("✅ Laba Bersih", to_rp(lr["Laba/Rugi"]))
+                st.metric("✅ Laba Bersih", to_rp_custom(lr["Laba/Rugi"]))
             else:
-                st.metric("⚠️ Rugi Bersih", to_rp(abs(lr["Laba/Rugi"])))
-        
+                st.metric("⚠️ Rugi Bersih", to_rp_custom(abs(lr["Laba/Rugi"])))
         st.markdown("---")
-        
-        # Recent Transactions
+
         st.markdown("### 📋 Transaksi Terbaru")
         df_display = df.tail(5).copy()
-        df_display["Debit"] = df_display["Debit"].apply(to_rp)
-        df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
+        df_display["Debit"] = df_display["Debit"].apply(to_rp_custom)
+        df_display["Kredit"] = df_display["Kredit"].apply(to_rp_custom)
+        df_display["Tanggal"] = df_display["Tanggal"].apply(format_tgl_waktu)
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
 # ============================
-# 1. INPUT TRANSAKSI
+# 1. INPUT TRANSAKSI (dengan waktu device otomatis)
 # ============================
 elif menu == "📝 Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True)
-    
+
     st.markdown("""
     <div style='background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
         <h4 style='color: #1976d2; margin: 0;'>💡 Tips Pencatatan:</h4>
@@ -533,99 +628,101 @@ elif menu == "📝 Input Transaksi":
         </ul>
     </div>
     """, unsafe_allow_html=True)
-    
+
     with st.form("form_transaksi", clear_on_submit=True):
         col1, col2 = st.columns(2)
-        
+
         with col1:
-            tgl = st.date_input("📅 Tanggal Transaksi", datetime.now())
-            akun = st.selectbox("🏦 Pilih Akun", 
-                ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
-                 "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
+            tgl_input = st.date_input("📅 Tanggal Transaksi", datetime.now().date())
+            akun = st.selectbox("🏦 Pilih Akun",
+                                ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya",
+                                 "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
             ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
-        
+
         with col2:
             st.markdown("#### 💰 Jumlah Transaksi")
             debit = st.number_input("Debit (Rp)", min_value=0, step=10000, format="%d")
             kredit = st.number_input("Kredit (Rp)", min_value=0, step=10000, format="%d")
-            
+
         st.markdown("---")
-        col_btn1, col_btn2, col_btn3 = st.columns([1,1,3])
+        col_btn1, col_btn2 = st.columns([1,1])
         with col_btn1:
             submit = st.form_submit_button("✅ Simpan Transaksi", use_container_width=True)
         with col_btn2:
-            cancel = st.form_submit_button("🔄 Reset", use_container_width=True)
-        
+            reset = st.form_submit_button("🔄 Reset")
+
         if submit:
             if debit == 0 and kredit == 0:
                 st.error("❌ Debit atau Kredit harus diisi!")
             elif ket.strip() == "":
                 st.error("❌ Keterangan harus diisi!")
             else:
-                tambah_transaksi(tgl, akun, ket, debit, kredit)
+                waktu_device = datetime.now().time()
+                tgl_waktu = datetime.combine(tgl_input, waktu_device)
+                tambah_transaksi(tgl_waktu, akun, ket, debit, kredit)
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
-                st.rerun()
+                st.experimental_rerun()
 
 # ============================
 # 2. LIHAT TRANSAKSI
 # ============================
 elif menu == "📋 Lihat Transaksi":
     st.markdown("<div class='subtitle'>📋 Daftar Semua Transaksi</div>", unsafe_allow_html=True)
-    
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi yang tercatat.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        
-        # Filter
+
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             filter_akun = st.multiselect("🔍 Filter berdasarkan Akun", df["Akun"].unique())
         with col_f2:
             sort_by = st.selectbox("📊 Urutkan berdasarkan", ["Tanggal", "Akun", "Debit", "Kredit"])
-        
+
         df_filtered = df.copy()
         if filter_akun:
             df_filtered = df_filtered[df_filtered["Akun"].isin(filter_akun)]
-        
         df_filtered = df_filtered.sort_values(sort_by)
+
         df_display = df_filtered.copy()
-        df_display["Debit"] = df_display["Debit"].apply(to_rp)
-        df_display["Kredit"] = df_display["Kredit"].apply(to_rp)
-        
+        df_display["Debit"] = df_display["Debit"].apply(to_rp_custom)
+        df_display["Kredit"] = df_display["Kredit"].apply(to_rp_custom)
+        df_display["Tanggal"] = df_display["Tanggal"].apply(format_tgl_waktu)
         st.dataframe(df_display, use_container_width=True, hide_index=True)
-        
+
         st.markdown("---")
         st.markdown("### 🗑️ Hapus Transaksi")
-        col_h1, col_h2 = st.columns([3, 1])
+        col_h1, col_h2 = st.columns([3,1])
         with col_h1:
-            idx_hapus = st.number_input("Nomor indeks transaksi yang ingin dihapus", 
+            idx_hapus = st.number_input("Nomor indeks transaksi yang ingin dihapus",
                                        min_value=0, max_value=len(st.session_state.transaksi)-1, step=1)
         with col_h2:
             if st.button("🗑️ Hapus", use_container_width=True):
                 hapus_transaksi(idx_hapus)
                 st.success("✅ Transaksi berhasil dihapus!")
-                st.rerun()
+                st.experimental_rerun()
 
 # ============================
 # 3. BUKU BESAR
 # ============================
 elif menu == "📖 Buku Besar":
     st.markdown("<div class='subtitle'>📖 Buku Besar Per Akun</div>", unsafe_allow_html=True)
-    
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk ditampilkan.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         bb = buku_besar(df)
-        
+
         for idx, (akun, data) in enumerate(bb.items()):
             with st.expander(f"📊 {akun}", expanded=(idx==0)):
                 data_display = data.copy()
-                data_display["Debit"] = data_display["Debit"].apply(to_rp)
-                data_display["Kredit"] = data_display["Kredit"].apply(to_rp)
-                data_display["Saldo"] = data_display["Saldo"].apply(to_rp)
+                data_display["Debit"] = data_display["Debit"].apply(to_rp_custom)
+                data_display["Kredit"] = data_display["Kredit"].apply(to_rp_custom)
+                data_display["Saldo"] = data_display["Saldo"].apply(to_rp_custom)
+                data_display["Tanggal"] = data_display["Tanggal"].apply(format_tgl_waktu)
                 st.dataframe(data_display, use_container_width=True, hide_index=True)
 
 # ============================
@@ -633,16 +730,16 @@ elif menu == "📖 Buku Besar":
 # ============================
 elif menu == "⚖️ Neraca Saldo":
     st.markdown("<div class='subtitle'>⚖️ Neraca Saldo</div>", unsafe_allow_html=True)
-    
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk ditampilkan.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         ns = neraca_saldo(df)
         ns_display = ns.copy()
-        ns_display["Debit"] = ns_display["Debit"].apply(to_rp)
-        ns_display["Kredit"] = ns_display["Kredit"].apply(to_rp)
-        ns_display["Saldo"] = ns_display["Saldo"].apply(to_rp)
+        ns_display["Debit"] = ns_display["Debit"].apply(to_rp_custom)
+        ns_display["Kredit"] = ns_display["Kredit"].apply(to_rp_custom)
+        ns_display["Saldo"] = ns_display["Saldo"].apply(to_rp_custom)
         st.dataframe(ns_display, use_container_width=True)
 
 # ============================
@@ -650,59 +747,58 @@ elif menu == "⚖️ Neraca Saldo":
 # ============================
 elif menu == "💰 Laporan Laba Rugi":
     st.markdown("<div class='subtitle'>💰 Laporan Laba Rugi</div>", unsafe_allow_html=True)
-    
+
     if len(st.session_state.transaksi) == 0:
         st.info("📭 Belum ada transaksi untuk dianalisis.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
         lr = laporan_laba_rugi(df)
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
+            st.markdown(f"""
+            <div style='background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
                         padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                 <h3 style='margin: 0; font-size: 18px;'>💵 Total Pendapatan</h3>
-                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(lr["Total Pendapatan"]) + """</h2>
+                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>{to_rp_custom(lr["Total Pendapatan"])}</h2>
             </div>
             """, unsafe_allow_html=True)
-        
+
         with col2:
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%); 
+            st.markdown(f"""
+            <div style='background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
                         padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                 <h3 style='margin: 0; font-size: 18px;'>💸 Total Beban</h3>
-                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(lr["Total Beban"]) + """</h2>
+                <h2 style='margin: 10px 0 0 0; font-size: 28px;'>{to_rp_custom(lr["Total Beban"])}</h2>
             </div>
             """, unsafe_allow_html=True)
-        
+
         with col3:
             if lr["Laba/Rugi"] >= 0:
-                st.markdown("""
-                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                             padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                     <h3 style='margin: 0; font-size: 18px;'>✅ Laba Bersih</h3>
-                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(lr["Laba/Rugi"]) + """</h2>
+                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>{to_rp_custom(lr["Laba/Rugi"])}</h2>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.markdown("""
-                <div style='background: linear-gradient(135deg, #f2709c 0%, #ff9472 100%); 
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #f2709c 0%, #ff9472 100%);
                             padding: 25px; border-radius: 12px; color: white; text-align: center;'>
                     <h3 style='margin: 0; font-size: 18px;'>⚠️ Rugi Bersih</h3>
-                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>""" + to_rp(abs(lr["Laba/Rugi"])) + """</h2>
+                    <h2 style='margin: 10px 0 0 0; font-size: 28px;'>{to_rp_custom(abs(lr["Laba/Rugi"]))}</h2>
                 </div>
                 """, unsafe_allow_html=True)
-        
+
         st.markdown("---")
-        
-        # Detail breakdown
+
         st.markdown("### 📊 Detail Perhitungan")
         detail_data = {
             "Keterangan": ["Total Pendapatan", "Total Beban", "Laba/Rugi Bersih"],
-            "Jumlah": [to_rp(lr["Total Pendapatan"]), to_rp(lr["Total Beban"]), 
-                      to_rp(lr["Laba/Rugi"]) if lr["Laba/Rugi"] >= 0 else f"({to_rp(abs(lr['Laba/Rugi']))})"]
+            "Jumlah": [to_rp_custom(lr["Total Pendapatan"]), to_rp_custom(lr["Total Beban"]),
+                      to_rp_custom(lr["Laba/Rugi"]) if lr["Laba/Rugi"] >= 0 else f"({to_rp_custom(abs(lr['Laba/Rugi']))})"]
         }
         st.table(pd.DataFrame(detail_data))
 
@@ -716,52 +812,80 @@ elif menu == "📈 Grafik":
         st.info("📭 Belum ada data untuk divisualisasikan.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        
+
         tab1, tab2, tab3 = st.tabs(["📊 Debit per Akun", "📊 Kredit per Akun", "📊 Perbandingan"])
-        
+
         with tab1:
             chart = alt.Chart(df).mark_bar().encode(
                 x=alt.X("Akun:N", title="Akun"),
                 y=alt.Y("Debit:Q", title="Debit (Rp)"),
                 color=alt.Color("Akun:N", legend=None),
                 tooltip=["Akun", "Debit"]
-            ).properties(
-                title="Grafik Total Debit per Akun",
-                height=400
-            )
+            ).properties(title="Grafik Total Debit per Akun", height=400)
             st.altair_chart(chart, use_container_width=True)
-        
+
         with tab2:
             chart2 = alt.Chart(df).mark_bar().encode(
                 x=alt.X("Akun:N", title="Akun"),
                 y=alt.Y("Kredit:Q", title="Kredit (Rp)"),
                 color=alt.Color("Akun:N", legend=None),
                 tooltip=["Akun", "Kredit"]
-            ).properties(
-                title="Grafik Total Kredit per Akun",
-                height=400
-            )
+            ).properties(title="Grafik Total Kredit per Akun", height=400)
             st.altair_chart(chart2, use_container_width=True)
-        
+
         with tab3:
             df_grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
-            df_melted = df_grouped.melt(id_vars="Akun", value_vars=["Debit", "Kredit"], 
+            df_melted = df_grouped.melt(id_vars="Akun", value_vars=["Debit", "Kredit"],
                                         var_name="Tipe", value_name="Jumlah")
-            
+
             chart3 = alt.Chart(df_melted).mark_bar().encode(
                 x=alt.X("Akun:N", title="Akun"),
                 y=alt.Y("Jumlah:Q", title="Jumlah (Rp)"),
                 color="Tipe:N",
                 xOffset="Tipe:N",
                 tooltip=["Akun", "Tipe", "Jumlah"]
-            ).properties(
-                title="Perbandingan Debit vs Kredit per Akun",
-                height=400
-            )
+            ).properties(title="Perbandingan Debit vs Kredit per Akun", height=400)
             st.altair_chart(chart3, use_container_width=True)
 
 # ============================
-# 7. EXPORT EXCEL
+# 7. IMPORT EXCEL
+# ============================
+elif menu == "📥 Import Excel":
+    st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
+
+    if uploaded_file:
+        try:
+            df_import = pd.read_excel(uploaded_file)
+            expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+            if all(col in df_import.columns for col in expected_cols):
+                # Konversi kolom tanggal jika perlu
+                df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors='coerce')
+                df_import = df_import.dropna(subset=["Tanggal"])  # hilangkan baris tanggal invalid
+                # Validasi tipe data Debit & Kredit
+                df_import["Debit"] = pd.to_numeric(df_import["Debit"], errors='coerce').fillna(0).astype(int)
+                df_import["Kredit"] = pd.to_numeric(df_import["Kredit"], errors='coerce').fillna(0).astype(int)
+
+                # Tampilkan preview
+                st.markdown("### Preview Data yang akan diimpor")
+                preview = df_import.copy()
+                preview["Debit"] = preview["Debit"].apply(to_rp_custom)
+                preview["Kredit"] = preview["Kredit"].apply(to_rp_custom)
+                preview["Tanggal"] = preview["Tanggal"].apply(format_tgl_waktu)
+                st.dataframe(preview)
+
+                if st.button("🗂️ Tambahkan Semua Transaksi dari File"):
+                    for idx, row in df_import.iterrows():
+                        tambah_transaksi(row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"])
+                    st.success(f"✅ Berhasil menambahkan {len(df_import)} transaksi!")
+                    st.experimental_rerun()
+            else:
+                st.error(f"Format file Excel tidak sesuai. Pastikan kolom: {expected_cols} ada.")
+        except Exception as ex:
+            st.error(f"Gagal membaca file Excel: {ex}")
+
+# ============================
+# 8. EXPORT EXCEL
 # ============================
 elif menu == "📤 Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
@@ -773,7 +897,7 @@ elif menu == "📤 Export Excel":
         <div style='background: #fff3cd; padding: 20px; border-radius: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px;'>
             <h4 style='color: #856404; margin: 0 0 10px 0;'>📦 File Excel akan berisi:</h4>
             <ul style='color: #856404; margin: 0;'>
-                <li>📄 Sheet 1: Laporan Keuangan (per bulan)</li>
+                <li>📄 Sheet 1: Laporan Keuangan (per bulan dan tahun)</li>
                 <li>📄 Sheet 2: Jurnal Umum</li>
                 <li>📄 Sheet 3: Buku Besar</li>
                 <li>📄 Sheet 4: Neraca Saldo</li>
@@ -781,9 +905,9 @@ elif menu == "📤 Export Excel":
             </ul>
         </div>
         """, unsafe_allow_html=True)
-        
+
         df = pd.DataFrame(st.session_state.transaksi)
-        
+
         # Preview data
         st.markdown("### 👁️ Preview Data")
         col_p1, col_p2 = st.columns(2)
@@ -791,18 +915,17 @@ elif menu == "📤 Export Excel":
             st.metric("Total Transaksi", len(df))
         with col_p2:
             st.metric("Total Akun Unik", df["Akun"].nunique())
-        
-        # Generate Excel
+
         try:
             excel_file = export_excel_multi(df)
-            
+
             st.markdown("---")
             col_d1, col_d2, col_d3 = st.columns([1, 2, 1])
             with col_d2:
                 st.download_button(
                     label="📥 Download Laporan Excel Lengkap",
                     data=excel_file,
-                    file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
