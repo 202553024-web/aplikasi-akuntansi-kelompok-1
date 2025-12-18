@@ -240,6 +240,40 @@ def export_excel_multi(df):
     output = io.BytesIO()
     wb = Workbook()
 
+    ws = wb.active
+    ws.title = "Laporan Keuangan"
+
+    df = df.sort_values(["Tahun", "Bulan", "Tanggal"])
+
+    row = 1
+    tahun_sekarang = None
+
+    for (tahun, bulan), grup in df.groupby(["Tahun", "Bulan"]):
+
+        if tahun != tahun_sekarang:
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
+            ws.cell(row=row, column=1, value=f"Laporan Tahun {tahun}")
+            row += 1
+            tahun_sekarang = tahun
+
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
+        ws.cell(row=row, column=1, value=f"Bulan {bulan}")
+        row += 1
+
+        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+        ws.append(headers)
+        row += 1
+
+        for r in dataframe_to_rows(grup[headers], index=False, header=False):
+            ws.append(r)
+            row += 1
+
+        row += 2
+
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()
+
     # =====================
     # STYLE
     # =====================
@@ -939,5 +973,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 
