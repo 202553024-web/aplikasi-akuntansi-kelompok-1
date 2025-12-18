@@ -191,10 +191,10 @@ def neraca_saldo(df):
     return grouped
 
 def laporan_laba_rugi(df):
-    # PERBAIKAN: Pendapatan dicatat di KREDIT, jadi kita ambil kredit untuk pendapatan
-    total_pendapatan = df[df["Akun"].isin(pendapatan_akun)]["Kredit"].sum()
-    # PERBAIKAN: Beban dicatat di DEBIT, jadi kita ambil debit untuk beban
-    total_beban = df[df["Akun"].isin(beban_akun)]["Debit"].sum()
+    # PERBAIKAN: Pendapatan dicatat di DEBIT, jadi kita ambil debit untuk pendapatan
+    total_pendapatan = df[df["Akun"].isin(pendapatan_akun)]["Debit"].sum()
+    # PERBAIKAN: Beban dicatat di KREDIT, jadi kita ambil kredit untuk beban
+    total_beban = df[df["Akun"].isin(beban_akun)]["Kredit"].sum()
     laba_rugi = total_pendapatan - total_beban
     return {
         "Total Pendapatan": total_pendapatan,
@@ -294,9 +294,155 @@ def export_excel_multi(df):
     ws_main.column_dimensions['E'].width = 20
 
     # ============================
-    # SHEET 2-5: (sama seperti sebelumnya, disingkat untuk menghemat space)
+    # SHEET 2: JURNAL UMUM
     # ============================
+    ws_jurnal = wb.create_sheet("Jurnal Umum")
+    ws_jurnal.cell(row=1, column=1, value="Jurnal Umum").font = Font(bold=True, size=14)
+    ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
     
+    headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+    for col_num, header in enumerate(headers, start=1):
+        cell = ws_jurnal.cell(row=2, column=col_num, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.fill = header_fill
+        cell.border = thin_border
+    
+    for r_idx, r in enumerate(dataframe_to_rows(df[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False), start=3):
+        for c_idx, val in enumerate(r, start=1):
+            cell = ws_jurnal.cell(row=r_idx, column=c_idx)
+            cell.border = thin_border
+            if c_idx in [4, 5]:
+                val = int(val) if pd.notna(val) and val != 0 else 0
+                if val == 0:
+                    cell.value = "Rp                    -"
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                else:
+                    cell.value = val
+                    cell.number_format = '"Rp"#,##0.00'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                cell.value = val
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+    
+    ws_jurnal.column_dimensions['A'].width = 20
+    ws_jurnal.column_dimensions['B'].width = 18
+    ws_jurnal.column_dimensions['C'].width = 20
+    ws_jurnal.column_dimensions['D'].width = 20
+    ws_jurnal.column_dimensions['E'].width = 20
+
+    # ============================
+    # SHEET 3: BUKU BESAR
+    # ============================
+    ws_bb = wb.create_sheet("Buku Besar")
+    bb = buku_besar(df)
+    current_row_bb = 1
+    
+    for akun, data in bb.items():
+        ws_bb.cell(row=current_row_bb, column=1, value=f"Buku Besar - {akun}").font = Font(bold=True, size=12)
+        ws_bb.merge_cells(start_row=current_row_bb, start_column=1, end_row=current_row_bb, end_column=6)
+        current_row_bb += 1
+        
+        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]
+        for col_num, header in enumerate(headers, start=1):
+            cell = ws_bb.cell(row=current_row_bb, column=col_num, value=header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.fill = header_fill
+            cell.border = thin_border
+        current_row_bb += 1
+        
+        for r in dataframe_to_rows(data[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit", "Saldo"]], index=False, header=False):
+            for c_idx, val in enumerate(r, start=1):
+                cell = ws_bb.cell(row=current_row_bb, column=c_idx)
+                cell.border = thin_border
+                if c_idx in [4, 5, 6]:
+                    val = int(val) if pd.notna(val) and val != 0 else 0
+                    cell.value = val
+                    cell.number_format = '"Rp"#,##0.00'
+                    cell.alignment = Alignment(horizontal="right", vertical="center")
+                else:
+                    cell.value = val
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+            current_row_bb += 1
+        current_row_bb += 2  # Spasi antar akun
+    
+    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+        ws_bb.column_dimensions[col].width = 18
+
+    # ============================
+    # SHEET 4: NERACA SALDO
+    # ============================
+    ws_ns = wb.create_sheet("Neraca Saldo")
+    ns = neraca_saldo(df)
+    ws_ns.cell(row=1, column=1, value="Neraca Saldo").font = Font(bold=True, size=14)
+    ws_ns.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    ws_ns.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
+    
+    headers = ["Akun", "Debit", "Kredit", "Saldo"]
+    for col_num, header in enumerate(headers, start=1):
+        cell = ws_ns.cell(row=2, column=col_num, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.fill = header_fill
+        cell.border = thin_border
+    
+    for r_idx, r in enumerate(dataframe_to_rows(ns.reset_index()[["Akun", "Debit", "Kredit", "Saldo"]], index=False, header=False), start=3):
+        for c_idx, val in enumerate(r, start=1):
+            cell = ws_ns.cell(row=r_idx, column=c_idx)
+            cell.border = thin_border
+            if c_idx in [2, 3, 4]:
+                val = int(val) if pd.notna(val) and val != 0 else 0
+                cell.value = val
+                cell.number_format = '"Rp"#,##0.00'
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                cell.value = val
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+    
+    ws_ns.column_dimensions['A'].width = 18
+    ws_ns.column_dimensions['B'].width = 20
+    ws_ns.column_dimensions['C'].width = 20
+    ws_ns.column_dimensions['D'].width = 20
+
+    # ============================
+    # SHEET 5: LAPORAN LABA RUGI
+    # ============================
+    ws_lr = wb.create_sheet("Laporan Laba Rugi")
+    lr = laporan_laba_rugi(df)
+    ws_lr.cell(row=1, column=1, value="Laporan Laba Rugi").font = Font(bold=True, size=14)
+    ws_lr.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    ws_lr.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+    
+        ws_lr.cell(row=2, column=1, value="Keterangan").font = Font(bold=True)
+    ws_lr.cell(row=2, column=2, value="Jumlah").font = Font(bold=True)
+    ws_lr.cell(row=2, column=1).border = thin_border
+    ws_lr.cell(row=2, column=2).border = thin_border
+    ws_lr.cell(row=2, column=1).alignment = Alignment(horizontal="left", vertical="center")
+    ws_lr.cell(row=2, column=2).alignment = Alignment(horizontal="right", vertical="center")
+    
+    row_lr = 3
+    ws_lr.cell(row=row_lr, column=1, value="Total Pendapatan").border = thin_border
+    ws_lr.cell(row=row_lr, column=2, value=lr["Total Pendapatan"]).border = thin_border
+    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
+    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
+    row_lr += 1
+    
+    ws_lr.cell(row=row_lr, column=1, value="Total Beban").border = thin_border
+    ws_lr.cell(row=row_lr, column=2, value=lr["Total Beban"]).border = thin_border
+    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
+    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
+    row_lr += 1
+    
+    ws_lr.cell(row=row_lr, column=1, value="Laba/Rugi").border = thin_border
+    ws_lr.cell(row=row_lr, column=2, value=lr["Laba/Rugi"]).border = thin_border
+    ws_lr.cell(row=row_lr, column=2).number_format = '"Rp"#,##0.00'
+    ws_lr.cell(row=row_lr, column=2).alignment = Alignment(horizontal="right", vertical="center")
+    
+    ws_lr.column_dimensions['A'].width = 20
+    ws_lr.column_dimensions['B'].width = 20
+
     wb.save(output)
     output.seek(0)
     return output.getvalue()
@@ -380,10 +526,10 @@ elif menu == "📝 Input Transaksi":
     <div style='background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
         <h4 style='color: #1976d2; margin: 0;'>💡 Tips Pencatatan:</h4>
         <ul style='color: #1976d2; margin: 5px 0;'>
-            <li><strong>Pendapatan</strong> → Dicatat di kolom <strong>KREDIT</strong></li>
-            <li><strong>Beban</strong> → Dicatat di kolom <strong>DEBIT</strong></li>
-            <li><strong>Kas Masuk</strong> → Kas di <strong>DEBIT</strong>, Pendapatan di <strong>KREDIT</strong></li>
-            <li><strong>Kas Keluar</strong> → Beban di <strong>DEBIT</strong>, Kas di <strong>KREDIT</strong></li>
+            <li><strong>Pendapatan</strong> → Dicatat di kolom <strong>DEBIT</strong></li>
+            <li><strong>Beban</strong> → Dicatat di kolom <strong>KREDIT</strong></li>
+            <li><strong>Kas Masuk</strong> → Kas di <strong>DEBIT</strong>, Pendapatan di <strong>DEBIT</strong></li>
+            <li><strong>Kas Keluar</strong> → Beban di <strong>KREDIT</strong>, Kas di <strong>KREDIT</strong></li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -394,7 +540,7 @@ elif menu == "📝 Input Transaksi":
         with col1:
             tgl = st.date_input("📅 Tanggal Transaksi", datetime.now())
             akun = st.selectbox("🏦 Pilih Akun", 
-                ["Kas", "Piutang", "Pendapatan Jasa", "Pendapatan Lainnya", 
+                ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
                  "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
             ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
         
@@ -672,5 +818,3 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
-
-
