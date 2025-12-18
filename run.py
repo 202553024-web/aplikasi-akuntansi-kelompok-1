@@ -642,13 +642,13 @@ elif menu == "📤 Export Excel":
         st.markdown(f"Total transaksi: {total_transaksi}")
         try:
             excel_data = export_excel_multi(df)
-
-            for tahun, df_tahun in df.groupby("Tahun"):
-    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
-    tcell = ws.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
-    tcell.font = Font(bold=True, size=14)
-    tcell.fill = year_fill
-    tcell.alignment = Alignment(horizontal="center", vertical="center")
+            
+    for tahun, df_tahun in df.groupby("Tahun"):
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+                tcell = ws.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
+                tcell.font = Font(bold=True, size=14)
+                tcell.fill = year_fill
+                tcell.alignment = Alignment(horizontal="center", vertical="center")
     for col in range(1, 6):
         ws.cell(row=current_row, column=col).border = thin_border
     current_row += 1
@@ -661,7 +661,7 @@ elif menu == "📤 Export Excel":
         bcell.font = font_bold
         bcell.fill = title_fill
         bcell.alignment = Alignment(horizontal="center", vertical="center")
-        for col in range(1, 6):
+    for col in range(1, 6):
             ws.cell(row=current_row, column=col).border = thin_border
         current_row += 1
 
@@ -718,5 +718,6 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
