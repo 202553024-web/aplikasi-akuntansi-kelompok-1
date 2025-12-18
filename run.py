@@ -438,12 +438,12 @@ for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
     ws_lr.append(["Total Beban", lr["Total Beban"]])
     ws_lr.append(["Laba / Rugi", lr["Laba/Rugi"]])
 
-    # =====================
-    # SIMPAN FILE
-    # =====================
-    wb.save(output)
-    output.seek(0)
-    return output.getvalue()
+        # =====================
+        # SIMPAN FILE
+        # =====================
+        wb.save(output)
+        output.seek(0)
+        return output.getvalue()
 
 # ============================
 # MENU NAVIGASI
@@ -973,6 +973,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
