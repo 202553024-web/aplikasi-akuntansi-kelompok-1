@@ -13,9 +13,9 @@ from openpyxl.utils import get_column_letter
 # CONFIG TAMPAK APLIKASI
 # ============================
 st.set_page_config(
-    page_title="Aplikasi Akuntansi",
-    page_icon="💰",
-    layout="wide"
+    page_title="Aplikasi Akuntansi",
+    page_icon="💰",
+    layout="wide"
 )
 
 st.markdown("""
@@ -578,3 +578,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
