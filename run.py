@@ -586,3 +586,91 @@ elif menu == "📈 Grafik":
                 tooltip=["Akun", "Tipe", "Jumlah"]
             ).properties(title="Perbandingan Debit vs Kredit per Akun", height=400)
             st.altair_chart(chart, use_container_width=True)
+
+# ===========================
+# Menu untuk Import Excel
+# ===========================
+elif menu == "📥 Import Excel":
+    st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Pilih file Excel", type=["xlsx"])
+    if uploaded_file:
+        df_import = pd.read_excel(uploaded_file)
+        df_import.columns = df_import.columns.str.strip()  # bersihkan nama kolom
+        expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+    
+        if not all(col in df_import.columns for col in expected_cols):
+            st.error(f"File harus ada kolom: {expected_cols}")
+        else:
+            # Bersihkan format tanggal dan nilai
+            df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors="coerce")
+            df_import = df_import.dropna(subset=["Tanggal"])
+
+            for col in ["Debit", "Kredit"]:
+                df_import[col] = (
+                    df_import[col].astype(str)
+                    .str.replace("Rp", "")
+                    .str.replace(".", "")
+                    .str.replace(",", ".")
+                )
+                df_import[col] = pd.to_numeric(df_import[col], errors="coerce").fillna(0).astype(int)
+
+            # Menambah Tahun dan Bulan
+            df_import["Tahun"] = df_import["Tanggal"].dt.year
+            df_import["Bulan"] = df_import["Tanggal"].dt.month
+
+            st.dataframe(df_import.head())
+
+            if st.button("Tambahkan semua transaksi dari file"):
+                for _, row in df_import.iterrows():
+                    tambah_transaksi(
+                        {
+                            "Tanggal": row["Tanggal"],
+                            "Akun": row["Akun"],
+                            "Keterangan": row["Keterangan"],
+                            "Debit": row["Debit"],
+                            "Kredit": row["Kredit"]
+                        }
+                    )
+                st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
+                st.rerun()
+
+# ===========================
+# Menu untuk Export Excel
+# ===========================
+elif menu == "📤 Export Excel":
+    df = pd.DataFrame(st.session_state.transaksi)
+
+    st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
+
+    if len(df) == 0:
+        st.info("Belum ada transaksi untuk diexport.")
+    else:
+        # Filter periode sebelum export
+        periode_filter = st.text_input("Filter Periode (YYYY-MM)", value=datetime.now().strftime("%Y-%m"))
+        try:
+            tahun_filter, bulan_filter = map(int, periode_filter.split("-"))
+            df_filtered = df[(df["Tahun"] == tahun_filter) & (df["Bulan"] == bulan_filter)]
+        except:
+            st.warning("Format periode harus YYYY-MM, misal 2025-12")
+            st.stop()
+
+        if df_filtered.empty:
+            st.info("Tidak ada transaksi di periode ini.")
+        else:
+            total_debit = df_filtered["Debit"].sum()
+            total_kredit = df_filtered["Kredit"].sum()
+            saldo = total_debit - total_kredit
+            st.info(f"Total Debit: {format_rupiah_angka(total_debit)} | Total Kredit: {format_rupiah_angka(total_kredit)} | Saldo: {format_rupiah_angka(saldo)}")
+
+            try:
+                excel_data = export_excel_multi(df_filtered)  # Gunakan fungsi export_excel_multi yang sudah ada
+                st.download_button(
+                    "Download Laporan Akuntansi.xlsx",
+                    excel_data,
+                    file_name=f"laporan_akuntansi_{periode_filter.replace('-', '')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success("File siap diunduh!")
+            except Exception as e:
+                st.error(f"Error saat generate file Excel: {e}")
+
