@@ -301,10 +301,10 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
     ws_main.cell(row=current_row, column=4).border = thin_border
     ws_main.cell(row=current_row, column=4).fill = PatternFill("solid", fgColor="E2EFDA")
 
-    current_row += 2
+current_row += 2
 
-        for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
-            ws_main.column_dimensions[col].width = w
+for col, w in zip(["A", "B", "C", "D", "E"], [20, 18, 25, 20, 20]):
+    ws_main.column_dimensions[col].width = w
 
     # =====================
     # SHEET 2: JURNAL UMUM
@@ -807,6 +807,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
