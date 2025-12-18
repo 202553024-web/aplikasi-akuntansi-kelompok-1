@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -934,4 +933,5 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
