@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -262,7 +263,7 @@ def export_excel_multi(df):
     df_sorted = df.sort_values(["Tahun", "Bulan", "Tanggal"])
 
     current_row = 1
-    tahun_sekarang = None   # ✅ SEJAJAR
+    tahun_sekarang = None  # ✅ SEJAJAR
 
     for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
         # kode di dalam loop
@@ -340,6 +341,7 @@ def export_excel_multi(df):
     ws_main.cell(row=current_row, column=4).fill = PatternFill(
         "solid", fgColor="E2EFDA"
     )
+
 
 current_row += 2
 
@@ -937,8 +939,4 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-
-
-
 
