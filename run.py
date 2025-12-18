@@ -191,7 +191,14 @@ elif menu == "Grafik":
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# EXPORT EXCEL
+# EXPORT
 # ============================
-elif menu == "Export Excel":
-    st.info("Export Excel sudah ada di versi sebelumnya (tidak diubah)")
+elif menu=="Export Excel":
+    if st.session_state.transaksi:
+        df=pd.DataFrame(st.session_state.transaksi)
+        file=export_excel(df)
+        st.download_button(
+            "📥 Download Excel",
+            file,
+            "laporan_akuntansi_lengkap.xlsx"
+        )
