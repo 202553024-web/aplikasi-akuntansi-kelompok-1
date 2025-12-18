@@ -1,47 +1,20 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
 from datetime import datetime
 import io
 
 from openpyxl.styles import Font, PatternFill, Alignment
 
-# ============================
-# CONFIG HALAMAN
-# ============================
-st.set_page_config(
-    page_title="Aplikasi Akuntansi",
-    page_icon="💰",
-    layout="wide"
-)
+# ================= CONFIG =================
+st.set_page_config("Aplikasi Akuntansi", "💰", layout="wide")
 
-st.markdown("""
-<style>
-.title { font-size:38px; font-weight:800; text-align:center; }
-.subtitle { font-size:22px; font-weight:600; margin-top:20px; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("<div class='title'>📊 Aplikasi Akuntansi</div>", unsafe_allow_html=True)
-
-# ============================
-# SESSION
-# ============================
 if "transaksi" not in st.session_state:
     st.session_state.transaksi = []
 
-# ============================
-# FORMAT RUPIAH
-# ============================
-def to_rp(x):
-    return f"Rp {int(x):,}".replace(",", ".")
-
-# ============================
-# LOGIKA AKUNTANSI
-# ============================
+# ================= FUNGSI =================
 def tambah_transaksi(tgl, akun, ket, debit, kredit):
     st.session_state.transaksi.append({
-        "Tanggal": tgl,
+        "Tanggal": pd.to_datetime(tgl),
         "Akun": akun,
         "Keterangan": ket,
         "Debit": debit,
@@ -61,87 +34,18 @@ def neraca_saldo(df):
     g["Saldo"] = g["Debit"] - g["Kredit"]
     return g.reset_index()
 
-# ============================
-# SIDEBAR
-# ============================
-menu = st.sidebar.radio(
-    "📌 Menu",
-    ["Input Transaksi", "Jurnal Umum", "Buku Besar", "Neraca Saldo", "Export Excel"]
-)
+def laba_rugi(df):
+    pendapatan = df[df["Akun"].str.contains("Pendapatan", case=False)]
+    beban = df[df["Akun"].str.contains("Beban", case=False)]
 
-# ============================
-# INPUT TRANSAKSI
-# ============================
-if menu == "Input Transaksi":
-    st.markdown("<div class='subtitle'>📝 Input Transaksi</div>", unsafe_allow_html=True)
+    total_pendapatan = pendapatan["Kredit"].sum()
+    total_beban = beban["Debit"].sum()
 
-    akun_list = [
-        "Kas", "Piutang", "Utang", "Modal",
-        "Pendapatan Jasa", "Beban Gaji",
-        "Beban Listrik", "Beban Sewa"
-    ]
+    laba = total_pendapatan - total_beban
 
-    tgl = st.date_input("Tanggal", datetime.now())
-    akun = st.selectbox("Akun", akun_list)
-    ket = st.text_input("Keterangan")
+    return total_pendapatan, total_beban, laba
 
-    col1, col2 = st.columns(2)
-    debit = col1.number_input("Debit", 0, step=1000)
-    kredit = col2.number_input("Kredit", 0, step=1000)
-
-    if st.button("Tambah"):
-        tambah_transaksi(str(tgl), akun, ket, debit, kredit)
-        st.success("Transaksi ditambahkan")
-
-# ============================
-# JURNAL UMUM
-# ============================
-elif menu == "Jurnal Umum":
-    st.markdown("<div class='subtitle'>📘 Jurnal Umum</div>", unsafe_allow_html=True)
-    if st.session_state.transaksi:
-        df = pd.DataFrame(st.session_state.transaksi)
-        df["Debit"] = df["Debit"].apply(to_rp)
-        df["Kredit"] = df["Kredit"].apply(to_rp)
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("Belum ada data")
-
-# ============================
-# BUKU BESAR
-# ============================
-elif menu == "Buku Besar":
-    st.markdown("<div class='subtitle'>📗 Buku Besar</div>", unsafe_allow_html=True)
-    if st.session_state.transaksi:
-        df = pd.DataFrame(st.session_state.transaksi)
-        buku = buku_besar(df)
-        for akun, d in buku.items():
-            st.write(f"### {akun}")
-            d2 = d.copy()
-            d2["Debit"] = d2["Debit"].apply(to_rp)
-            d2["Kredit"] = d2["Kredit"].apply(to_rp)
-            d2["Saldo"] = d2["Saldo"].apply(to_rp)
-            st.dataframe(d2, use_container_width=True)
-    else:
-        st.info("Belum ada data")
-
-# ============================
-# NERACA SALDO
-# ============================
-elif menu == "Neraca Saldo":
-    st.markdown("<div class='subtitle'>📙 Neraca Saldo</div>", unsafe_allow_html=True)
-    if st.session_state.transaksi:
-        df = pd.DataFrame(st.session_state.transaksi)
-        ns = neraca_saldo(df)
-        ns["Debit"] = ns["Debit"].apply(to_rp)
-        ns["Kredit"] = ns["Kredit"].apply(to_rp)
-        ns["Saldo"] = ns["Saldo"].apply(to_rp)
-        st.dataframe(ns, use_container_width=True)
-    else:
-        st.info("Belum ada data")
-
-# ============================
-# EXPORT EXCEL (TAMPILAN MIRIP CONTOH)
-# ============================
+# ================= EXPORT EXCEL =================
 def export_excel(df):
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine="openpyxl")
@@ -151,77 +55,98 @@ def export_excel(df):
     tfont = Font(bold=True, size=14)
     center = Alignment(horizontal="center")
 
-    # ===== JURNAL UMUM =====
-    df.to_excel(writer, sheet_name="Jurnal Umum", startrow=3, index=False)
-    ws = writer.sheets["Jurnal Umum"]
-    ws.merge_cells("A1:E1")
-    ws["A1"] = "JURNAL UMUM"
-    ws["A1"].font = tfont
-    ws["A1"].alignment = center
-
-    for c in range(1, 6):
-        cell = ws.cell(row=4, column=c)
-        cell.fill = header
-        cell.font = hfont
-        cell.alignment = center
-
-    # ===== BUKU BESAR =====
-    ws = writer.book.create_sheet("Buku Besar")
+    # ================= LAPORAN KEUANGAN =================
+    ws = writer.book.create_sheet("Laporan Keuangan")
     row = 1
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
-    ws.cell(row=row, column=1, value="BUKU BESAR").font = tfont
-    ws.cell(row=row, column=1).alignment = center
-    row += 2
 
-    buku = buku_besar(df)
-    for akun, d in buku.items():
+    for tahun, df_tahun in df.groupby(df["Tanggal"].dt.year):
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
-        ws.cell(row=row, column=1, value=f"Nama Akun : {akun}").font = Font(bold=True)
+        ws.cell(row=row, column=1, value=f"Laporan Keuangan Tahun {tahun}").font = tfont
+        ws.cell(row=row, column=1).alignment = center
         row += 1
 
-        headers = ["Tanggal", "Keterangan", "Debit", "Kredit", "Saldo"]
-        for i, h in enumerate(headers, 1):
-            cell = ws.cell(row=row, column=i, value=h)
-            cell.fill = header
-            cell.font = hfont
-            cell.alignment = center
-        row += 1
-
-        for _, r in d.iterrows():
-            ws.append([r["Tanggal"], r["Keterangan"], r["Debit"], r["Kredit"], r["Saldo"]])
+        for bulan, df_bulan in df_tahun.groupby(df_tahun["Tanggal"].dt.month):
+            nama_bulan = df_bulan["Tanggal"].dt.strftime("%B").iloc[0]
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
+            ws.cell(row=row, column=1, value=f"Bulan {nama_bulan}").font = Font(bold=True)
+            ws.cell(row=row, column=1).alignment = center
             row += 1
-        row += 2
 
-    # ===== NERACA SALDO =====
-    ns = neraca_saldo(df)
-    ns.to_excel(writer, sheet_name="Neraca Saldo", startrow=3, index=False)
-    ws = writer.sheets["Neraca Saldo"]
-    ws.merge_cells("A1:D1")
-    ws["A1"] = "NERACA SALDO"
+            headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+            for i, h in enumerate(headers, 1):
+                c = ws.cell(row=row, column=i, value=h)
+                c.fill = header
+                c.font = hfont
+                c.alignment = center
+            row += 1
+
+            for _, r in df_bulan.iterrows():
+                ws.append([
+                    r["Tanggal"],
+                    r["Akun"],
+                    r["Keterangan"],
+                    r["Debit"],
+                    r["Kredit"]
+                ])
+                row += 1
+            row += 1
+
+    # ================= LABA RUGI =================
+    ws = writer.book.create_sheet("Laba Rugi")
+    ws.merge_cells("A1:B1")
+    ws["A1"] = "Laporan Laba Rugi"
     ws["A1"].font = tfont
     ws["A1"].alignment = center
 
-    for c in range(1, 5):
-        cell = ws.cell(row=4, column=c)
-        cell.fill = header
-        cell.font = hfont
-        cell.alignment = center
+    total_pendapatan, total_beban, laba = laba_rugi(df)
+
+    data_lr = [
+        ("Pendapatan", total_pendapatan),
+        ("Beban", total_beban),
+        ("Laba / Rugi Bersih", laba)
+    ]
+
+    row = 3
+    for nama, nilai in data_lr:
+        ws.cell(row=row, column=1, value=nama)
+        ws.cell(row=row, column=2, value=nilai)
+        ws.cell(row=row, column=2).number_format = '"Rp" #,##0.00'
+        row += 1
+
+    # ================= FORMAT UANG =================
+    for sheet in writer.book.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = '"Rp" #,##0.00'
 
     writer.close()
     return output.getvalue()
 
-# ============================
-# TOMBOL EXPORT
-# ============================
-if menu == "Export Excel":
-    st.markdown("<div class='subtitle'>📤 Export Excel</div>", unsafe_allow_html=True)
+# ================= UI =================
+menu = st.sidebar.radio("Menu", ["Input", "Export Excel"])
+
+if menu == "Input":
+    tgl = st.date_input("Tanggal", datetime.now())
+    akun = st.text_input("Akun")
+    ket = st.text_input("Keterangan")
+    debit = st.number_input("Debit", 0)
+    kredit = st.number_input("Kredit", 0)
+
+    if st.button("Tambah"):
+        tambah_transaksi(tgl, akun, ket, debit, kredit)
+        st.success("Transaksi ditambahkan")
+
+    st.dataframe(pd.DataFrame(st.session_state.transaksi))
+
+else:
     if st.session_state.transaksi:
         df = pd.DataFrame(st.session_state.transaksi)
-        excel = export_excel(df)
+        file = export_excel(df)
         st.download_button(
             "📥 Download Excel",
-            excel,
-            "laporan_akuntansi.xlsx",
+            file,
+            "laporan_keuangan_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     else:
