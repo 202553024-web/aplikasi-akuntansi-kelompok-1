@@ -297,10 +297,10 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
     # ============================
     # SHEET 2: JURNAL UMUM
     # ============================
-    ws_jurnal = wb.create_sheet("Jurnal Umum")
-    ws_jurnal.cell(row=1, column=1, value="Jurnal Umum").font = Font(bold=True, size=14)
-    ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center")
-    ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
+        ws_jurnal = wb.create_sheet("Jurnal Umum")
+        ws_jurnal.cell(row=1, column=1, value="Jurnal Umum").font = Font(bold=True, size=14)
+        ws_jurnal.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+        ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
     
     headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
     for col_num, header in enumerate(headers, start=1):
@@ -327,11 +327,11 @@ for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
                 cell.value = val
                 cell.alignment = Alignment(horizontal="left", vertical="center")
     
-    ws_jurnal.column_dimensions['A'].width = 20
-    ws_jurnal.column_dimensions['B'].width = 18
-    ws_jurnal.column_dimensions['C'].width = 20
-    ws_jurnal.column_dimensions['D'].width = 20
-    ws_jurnal.column_dimensions['E'].width = 20
+        ws_jurnal.column_dimensions['A'].width = 20
+        ws_jurnal.column_dimensions['B'].width = 18
+        ws_jurnal.column_dimensions['C'].width = 20
+        ws_jurnal.column_dimensions['D'].width = 20
+        ws_jurnal.column_dimensions['E'].width = 20
 
     # ============================
     # SHEET 3: BUKU BESAR
@@ -867,6 +867,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
