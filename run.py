@@ -160,7 +160,7 @@ def to_rp(n):
 # AMBIL JAM DARI DEVICE USER
 # ============================
 def get_device_datetime():
-    return datetime.now().astimezone()
+    return datetime.now(ZoneInfo("Asia/Jakarta"))
 
 # ============================
 # KLASIFIKASI AKUN
@@ -782,6 +782,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
