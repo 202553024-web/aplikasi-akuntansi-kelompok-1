@@ -244,7 +244,31 @@ def export_excel_multi(df):
     current_row = 1
     tahun_sekarang = None
 
-    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+
+    if tahun != tahun_sekarang:
+        ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+        cell = ws_main.cell(row=current_row, column=1, value=f"Laporan Keuangan Tahun {tahun}")
+        cell.font = Font(bold=True, size=14)
+        cell.alignment = Alignment(horizontal="center")
+        cell.fill = year_fill
+        current_row += 1
+        tahun_sekarang = tahun
+
+    ws_main.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=5)
+    cell = ws_main.cell(row=current_row, column=1, value=f"Bulan {bulan}")
+    cell.font = Font(bold=True)
+    cell.alignment = Alignment(horizontal="center")
+    cell.fill = title_fill
+    current_row += 1
+
+    headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+    for col, h in enumerate(headers, start=1):
+        c = ws_main.cell(row=current_row, column=col, value=h)
+        c.font = Font(bold=True, color="FFFFFF")
+        c.fill = header_fill
+        c.border = thin_border
+    current_row += 1
 
     # =====================
     # ISI DATA TRANSAKSI
@@ -253,7 +277,7 @@ def export_excel_multi(df):
         for col, val in enumerate(r, start=1):
             cell = ws_main.cell(row=current_row, column=col, value=val)
             cell.border = thin_border
-            current_row += 1
+        current_row += 1
 
     # =====================
     # TOTAL PER BULAN
@@ -274,7 +298,6 @@ def export_excel_multi(df):
 
     ws_main.cell(row=current_row, column=3, value="SALDO BULAN INI").font = Font(bold=True)
     ws_main.cell(row=current_row, column=4, value=saldo_bulan).font = Font(bold=True)
-
     ws_main.cell(row=current_row, column=4).border = thin_border
     ws_main.cell(row=current_row, column=4).fill = PatternFill("solid", fgColor="E2EFDA")
 
@@ -784,6 +807,7 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
