@@ -574,7 +574,7 @@ elif menu == "Buku Besar":
         df = pd.DataFrame(st.session_state.transaksi)
         bb = buku_besar(df)
         
-       for akun, data in bb.items():
+        for akun, data in bb.items():
             st.subheader(f"Akun: {akun}")
             data_display = data.copy()
             data_display["Debit"] = data_display["Debit"].apply(to_rp)
@@ -657,3 +657,4 @@ elif menu == "Export Excel":
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
+
