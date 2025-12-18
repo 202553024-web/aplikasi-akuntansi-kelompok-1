@@ -417,7 +417,7 @@ elif menu == "📝 Input Transaksi":
         col1, col2 = st.columns(2)
         
         with col1:
-            tgl = st.datetime_input(
+    tgl = st.datetime_input(
     "📅 Tanggal & Waktu Transaksi",
     datetime.now()
 )
@@ -432,10 +432,10 @@ tahun = st.number_input(
     max_value=2100,
     value=datetime.now().year
 )
-            akun = st.selectbox("🏦 Pilih Akun", 
-                ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
-                 "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
-            ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
+    akun = st.selectbox("🏦 Pilih Akun", 
+                        ["Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
+                         "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
+    ket = st.text_input("📝 Keterangan", placeholder="Contoh: Pembayaran gaji karyawan")
         
         with col2:
             st.markdown("#### 💰 Jumlah Transaksi")
@@ -745,5 +745,6 @@ st.markdown("""
     <p style='margin: 5px 0 0 0; font-size: 14px;'>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
