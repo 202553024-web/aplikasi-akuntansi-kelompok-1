@@ -95,15 +95,9 @@ def laporan_laba_rugi(df):
     }
 
 # ============================
-# FUNGSI EXPORT EXCEL (DIPERBAIKI DENGAN LABA RUGI)
+# FUNGSI EXPORT EXCEL
 # ============================
 def export_excel_multi(df):
-    import io, calendar
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-    from openpyxl.utils import get_column_letter
-    from openpyxl.utils.dataframe import dataframe_to_rows
-
     output = io.BytesIO()
     wb = Workbook()
     
@@ -197,7 +191,7 @@ def export_excel_multi(df):
     ws_main.column_dimensions['E'].width = 20
 
     # ============================
-    # SHEET 2: JURNAL UMUM (DIKELOMPOKKAN PER BULAN)
+    # SHEET 2: JURNAL UMUM
     # ============================
     ws_jurnal = wb.create_sheet("Jurnal Umum")
     
@@ -401,7 +395,6 @@ def export_excel_multi(df):
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.fill = header_fill
         cell.border = thin_border
-
     
     # Data
     for i, r in enumerate(dataframe_to_rows(neraca[headers], index=False, header=False), start=4):
@@ -513,24 +506,125 @@ def export_excel_multi(df):
     wb.save(output)
     output.seek(0)
     return output.getvalue()
-    
-# ============================
-# 5. DEFINISI MENU (TAMBAHKAN INI!)
-# ============================
-# Bagian ini HARUS ada sebelum baris "if menu == ..."
-menu = st.sidebar.selectbox("Navigasi", ["Input Transaksi", "Grafik", "Export Excel"])
 
 # ============================
-# 6. LOGIKA HALAMAN (UTAMA)
+# MENU NAVIGASI
 # ============================
+menu = st.sidebar.selectbox(
+    "Menu",
+    ["Input Transaksi", "Lihat Transaksi", "Buku Besar", "Neraca Saldo", "Laporan Laba Rugi", "Grafik", "Export Excel"]
+)
 
+# ============================
+# 1. INPUT TRANSAKSI
+# ============================
 if menu == "Input Transaksi":
-    st.header("Halaman Input")
-    # ... isi kode input Anda ...
+    st.markdown("<div class='subtitle'>📝 Input Transaksi</div>", unsafe_allow_html=True)
+    
+    with st.form("form_transaksi"):
+        col1, col2 = st.columns(2)
+        with col1:
+            tgl = st.date_input("Tanggal", datetime.now())
+            akun = st.selectbox("Akun", ["Kas", "Piutang", "Pendapatan Jasa", "Beban Gaji", "Beban Listrik", "Beban Sewa"])
+        with col2:
+            ket = st.text_input("Keterangan")
+            debit = st.number_input("Debit", min_value=0, step=1000)
+            kredit = st.number_input("Kredit", min_value=0, step=1000)
+        
+        submit = st.form_submit_button("Tambah Transaksi")
+        
+        if submit:
+            if debit == 0 and kredit == 0:
+                st.error("Debit atau Kredit harus diisi!")
+            else:
+                tambah_transaksi(tgl, akun, ket, debit, kredit)
+                st.success("Transaksi berhasil ditambahkan!")
+                st.rerun()
 
-# SEKARANG BARU BOLEH PAKAI ELIF
+# ============================
+# 2. LIHAT TRANSAKSI
+# ============================
+elif menu == "Lihat Transaksi":
+    st.markdown("<div class='subtitle'>📋 Daftar Transaksi</div>", unsafe_allow_html=True)
+    
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        df["Debit"] = df["Debit"].apply(to_rp)
+        df["Kredit"] = df["Kredit"].apply(to_rp)
+        st.dataframe(df, use_container_width=True)
+        
+        st.markdown("### Hapus Transaksi")
+        idx_hapus = st.number_input("Nomor baris yang ingin dihapus", min_value=0, max_value=len(st.session_state.transaksi)-1, step=1)
+        if st.button("Hapus"):
+            hapus_transaksi(idx_hapus)
+            st.success("Transaksi berhasil dihapus!")
+            st.rerun()
+
+# ============================
+# 3. BUKU BESAR
+# ============================
+elif menu == "Buku Besar":
+    st.markdown("<div class='subtitle'>📖 Buku Besar</div>", unsafe_allow_html=True)
+    
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        bb = buku_besar(df)
+        
+       for akun, data in bb.items():
+            st.subheader(f"Akun: {akun}")
+            data_display = data.copy()
+            data_display["Debit"] = data_display["Debit"].apply(to_rp)
+            data_display["Kredit"] = data_display["Kredit"].apply(to_rp)
+            data_display["Saldo"] = data_display["Saldo"].apply(to_rp)
+            st.dataframe(data_display, use_container_width=True)
+
+# ============================
+# 4. NERACA SALDO
+# ============================
+elif menu == "Neraca Saldo":
+    st.markdown("<div class='subtitle'>⚖️ Neraca Saldo</div>", unsafe_allow_html=True)
+    
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        ns = neraca_saldo(df)
+        ns_display = ns.copy()
+        ns_display["Debit"] = ns_display["Debit"].apply(to_rp)
+        ns_display["Kredit"] = ns_display["Kredit"].apply(to_rp)
+        ns_display["Saldo"] = ns_display["Saldo"].apply(to_rp)
+        st.dataframe(ns_display, use_container_width=True)
+
+# ============================
+# 5. LAPORAN LABA RUGI
+# ============================
+elif menu == "Laporan Laba Rugi":
+    st.markdown("<div class='subtitle'>💰 Laporan Laba Rugi</div>", unsafe_allow_html=True)
+    
+    if len(st.session_state.transaksi) == 0:
+        st.info("Belum ada transaksi.")
+    else:
+        df = pd.DataFrame(st.session_state.transaksi)
+        lr = laporan_laba_rugi(df)
+        
+        st.metric("Total Pendapatan", to_rp(lr["Total Pendapatan"]))
+        st.metric("Total Beban", to_rp(lr["Total Beban"]))
+        
+        if lr["Laba/Rugi"] >= 0:
+            st.success(f"Laba Bersih: {to_rp(lr['Laba/Rugi'])}")
+        else:
+            st.error(f"Rugi Bersih: {to_rp(abs(lr['Laba/Rugi']))}")
+
+# ============================
+# 6. GRAFIK
+# ============================
 elif menu == "Grafik":
     st.markdown("<div class='subtitle'>📈 Grafik Akuntansi</div>", unsafe_allow_html=True)
+
     if len(st.session_state.transaksi) == 0:
         st.info("Belum ada data.")
     else:
@@ -539,11 +633,14 @@ elif menu == "Grafik":
             x="Akun",
             y="Debit",
             color="Akun"
-        ).properties(title="Grafik Jumlah Debit per Akun")
+        ).properties(
+            title="Grafik Jumlah Debit per Akun",
+            width=700
+        )
         st.altair_chart(chart, use_container_width=True)
 
 # ============================
-# 7. EXPORT EXCEL (MULTI SHEET)
+# 7. EXPORT EXCEL
 # ============================
 elif menu == "Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Excel (Multi Sheet)</div>", unsafe_allow_html=True)
@@ -559,4 +656,4 @@ elif menu == "Export Excel":
             file_name="laporan_akuntansi_lengkap.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
+        
