@@ -181,46 +181,100 @@ def export_excel_multi(df):
     ws_main.column_dimensions['E'].width = 20
 
     # ============================
-    # SHEET 2: JURNAL UMUM
+    # SHEET 2: JURNAL UMUM (DIKELOMPOKKAN PER BULAN)
     # ============================
     ws_jurnal = wb.create_sheet("Jurnal Umum")
     
-    # Title
-    ws_jurnal.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
-    title_cell = ws_jurnal.cell(row=1, column=1, value="Jurnal Umum")
-    title_cell.font = Font(bold=True, size=14)
-    title_cell.alignment = Alignment(horizontal="center", vertical="center")
-    title_cell.fill = year_fill
-    for col in range(1, 6):
-        ws_jurnal.cell(row=1, column=col).border = thin_border
-    
-    # Header
-    headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
-    for col_num, header in enumerate(headers, start=1):
-        cell = ws_jurnal.cell(row=3, column=col_num, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.fill = header_fill
-        cell.border = thin_border
-    
-    # Data
-    for i, r in enumerate(dataframe_to_rows(df[headers], index=False, header=False), start=4):
-        for c_idx, val in enumerate(r, start=1):
-            cell = ws_jurnal.cell(row=i, column=c_idx)
+    current_row_jurnal = 1
+    tahun_sekarang_jurnal = None
+
+    for (tahun, bulan), grup in df_sorted.groupby(["Tahun", "Bulan"]):
+        # Title Jurnal Umum
+        ws_jurnal.merge_cells(start_row=current_row_jurnal, start_column=1, end_row=current_row_jurnal, end_column=5)
+        title_cell = ws_jurnal.cell(row=current_row_jurnal, column=1, value="Jurnal Umum")
+        title_cell.font = Font(bold=True, size=14)
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        title_cell.fill = year_fill
+        for col in range(1, 6):
+            ws_jurnal.cell(row=current_row_jurnal, column=col).border = thin_border
+        current_row_jurnal += 1
+
+        # Periode Bulan dan Tahun
+        nama_bulan = calendar.month_name[bulan].capitalize()
+        ws_jurnal.merge_cells(start_row=current_row_jurnal, start_column=1, end_row=current_row_jurnal, end_column=5)
+        periode_cell = ws_jurnal.cell(row=current_row_jurnal, column=1, value=f"Periode {nama_bulan} {tahun}")
+        periode_cell.font = Font(bold=True, size=12)
+        periode_cell.alignment = Alignment(horizontal="center", vertical="center")
+        periode_cell.fill = year_fill
+        for col in range(1, 6):
+            ws_jurnal.cell(row=current_row_jurnal, column=col).border = thin_border
+        current_row_jurnal += 2
+        
+        # Header
+        headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+        for col_num, header in enumerate(headers, start=1):
+            cell = ws_jurnal.cell(row=current_row_jurnal, column=col_num, value=header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.fill = header_fill
             cell.border = thin_border
-            
-            if c_idx in [4, 5]:
-                val = int(val) if pd.notna(val) and val != 0 else 0
-                if val == 0:
-                    cell.value = "Rp                    -"
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
+        current_row_jurnal += 1
+        
+        # Data Transaksi
+        total_debit = 0
+        total_kredit = 0
+        
+        for r in dataframe_to_rows(grup[["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]], index=False, header=False):
+            for c_idx, val in enumerate(r, start=1):
+                cell = ws_jurnal.cell(row=current_row_jurnal, column=c_idx)
+                cell.border = thin_border
+                
+                if c_idx in [4, 5]:
+                    val = int(val) if pd.notna(val) and val != 0 else 0
+                    if c_idx == 4:
+                        total_debit += val
+                    else:
+                        total_kredit += val
+                        
+                    if val == 0:
+                        cell.value = "Rp                    -"
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        cell.value = val
+                        cell.number_format = '"Rp"#,##0.00'
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
                 else:
                     cell.value = val
-                    cell.number_format = '"Rp"#,##0.00'
-                    cell.alignment = Alignment(horizontal="right", vertical="center")
-            else:
-                cell.value = val
-                cell.alignment = Alignment(horizontal="left", vertical="center")
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+            current_row_jurnal += 1
+        
+        # Baris Total
+        ws_jurnal.merge_cells(start_row=current_row_jurnal, start_column=1, end_row=current_row_jurnal, end_column=3)
+        total_label_cell = ws_jurnal.cell(row=current_row_jurnal, column=1, value="Total")
+        total_label_cell.font = Font(bold=True)
+        total_label_cell.alignment = Alignment(horizontal="center", vertical="center")
+        total_label_cell.fill = title_fill
+        for col in range(1, 4):
+            ws_jurnal.cell(row=current_row_jurnal, column=col).border = thin_border
+            ws_jurnal.cell(row=current_row_jurnal, column=col).fill = title_fill
+        
+        # Total Debit
+        cell_total_debit = ws_jurnal.cell(row=current_row_jurnal, column=4, value=total_debit)
+        cell_total_debit.number_format = '"Rp"#,##0.00'
+        cell_total_debit.alignment = Alignment(horizontal="right", vertical="center")
+        cell_total_debit.fill = title_fill
+        cell_total_debit.border = thin_border
+        cell_total_debit.font = Font(bold=True)
+        
+        # Total Kredit
+        cell_total_kredit = ws_jurnal.cell(row=current_row_jurnal, column=5, value=total_kredit)
+        cell_total_kredit.number_format = '"Rp"#,##0.00'
+        cell_total_kredit.alignment = Alignment(horizontal="right", vertical="center")
+        cell_total_kredit.fill = title_fill
+        cell_total_kredit.border = thin_border
+        cell_total_kredit.font = Font(bold=True)
+        
+        current_row_jurnal += 2
     
     ws_jurnal.column_dimensions['A'].width = 20
     ws_jurnal.column_dimensions['B'].width = 18
