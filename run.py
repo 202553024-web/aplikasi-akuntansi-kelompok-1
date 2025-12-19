@@ -111,7 +111,7 @@ def format_tanggal(dt):
     else:
         dt = dt.astimezone(tz_jakarta)
 
-    return dt.strftime("%d/%m/%Y %H:%M:%S"
+    return dt.strftime("%d/%m/%Y %H:%M:%S")
 
 # =======================
 # Fungsi-fungsi akun
@@ -694,6 +694,7 @@ elif menu == "📤 Export Excel":
                 st.success("File siap diunduh!")
             except Exception as e:
                 st.error(f"Error saat generate file Excel: {e}")
+
 
 
 
