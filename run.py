@@ -636,31 +636,81 @@ elif menu == "📈 Grafik":
 
 elif menu == "📥 Import Excel":
     st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
+    
+    st.info("💡 Tips: Anda bisa menggunakan sheet 'Data Import' dari file export, atau sheet lain yang memiliki kolom: Tanggal, Akun, Keterangan, Debit, Kredit")
+    
     uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
     if uploaded_file:
         try:
-            df_import = pd.read_excel(uploaded_file)
+            # Baca semua sheet yang tersedia
+            excel_file = pd.ExcelFile(uploaded_file)
+            sheet_names = excel_file.sheet_names
+            
+            # Pilih sheet
+            if len(sheet_names) > 1:
+                selected_sheet = st.selectbox("Pilih Sheet:", sheet_names, 
+                                             index=sheet_names.index("Data Import") if "Data Import" in sheet_names else 0)
+            else:
+                selected_sheet = sheet_names[0]
+            
+            df_import = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+            
             expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+            
             if all(col in df_import.columns for col in expected_cols):
+                # Fungsi untuk parse format Rupiah ke angka
+                def parse_rupiah(value):
+                    if pd.isna(value) or value == "" or value == "Rp -":
+                        return 0
+                    if isinstance(value, (int, float)):
+                        return int(value)
+                    # Hapus "Rp", spasi, dan titik (pemisah ribuan), ganti koma dengan titik
+                    value_str = str(value).replace("Rp", "").replace(" ", "").replace(".", "").replace(",", ".").strip()
+                    if value_str == "" or value_str == "-":
+                        return 0
+                    try:
+                        return int(float(value_str))
+                    except:
+                        return 0
+                
+                # Proses data
                 df_import["Tanggal"] = pd.to_datetime(df_import["Tanggal"], errors='coerce')
                 df_import = df_import.dropna(subset=["Tanggal"])
-                df_import["Debit"] = pd.to_numeric(df_import["Debit"], errors='coerce').fillna(0).astype(int)
-                df_import["Kredit"] = pd.to_numeric(df_import["Kredit"], errors='coerce').fillna(0).astype(int)
-                st.markdown("Preview data yang akan diimpor")
-                preview = df_import.copy()
-                preview["Tanggal"] = preview["Tanggal"].apply(format_tanggal)
-                preview["Debit"] = preview["Debit"].apply(format_rupiah_angka)
-                preview["Kredit"] = preview["Kredit"].apply(format_rupiah_angka)
-                st.dataframe(preview)
-                if st.button("Tambahkan semua transaksi dari file"):
-                    for _, row in df_import.iterrows():
-                        tambah_transaksi(row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"])
-                    st.success(f"Berhasil menambahkan {len(df_import)} transaksi!")
-                    st.rerun()
+                
+                # Parse Debit dan Kredit (support format Rupiah atau angka biasa)
+                df_import["Debit"] = df_import["Debit"].apply(parse_rupiah)
+                df_import["Kredit"] = df_import["Kredit"].apply(parse_rupiah)
+                
+                # Filter baris yang valid (ada Debit atau Kredit)
+                df_import = df_import[(df_import["Debit"] > 0) | (df_import["Kredit"] > 0)]
+                
+                if len(df_import) == 0:
+                    st.warning("⚠️ Tidak ada data transaksi valid yang ditemukan.")
+                else:
+                    st.markdown(f"### 📋 Preview Data ({len(df_import)} transaksi)")
+                    preview = df_import.copy()
+                    preview["Tanggal"] = preview["Tanggal"].apply(format_tanggal)
+                    preview["Debit"] = preview["Debit"].apply(format_rupiah_angka)
+                    preview["Kredit"] = preview["Kredit"].apply(format_rupiah_angka)
+                    st.dataframe(preview, use_container_width=True)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("✅ Tambahkan Semua Transaksi", use_container_width=True):
+                            for _, row in df_import.iterrows():
+                                tambah_transaksi(row["Tanggal"], row["Akun"], row["Keterangan"], row["Debit"], row["Kredit"])
+                            st.success(f"🎉 Berhasil menambahkan {len(df_import)} transaksi!")
+                            st.balloons()
+                            st.rerun()
+                    with col2:
+                        if st.button("❌ Batal", use_container_width=True):
+                            st.rerun()
             else:
-                st.error(f"File harus ada kolom: {expected_cols}")
+                st.error(f"❌ File harus memiliki kolom: {', '.join(expected_cols)}")
+                st.info(f"📋 Kolom yang ditemukan: {', '.join(df_import.columns.tolist())}")
         except Exception as e:
-            st.error(f"Error membaca file: {e}")
+            st.error(f"❌ Error membaca file: {e}")
+            st.info("💡 Pastikan file Excel Anda memiliki format yang benar")
 
 elif menu == "📤 Export Excel":
     st.markdown("<div class='subtitle'>📤 Export Laporan ke Excel</div>", unsafe_allow_html=True)
@@ -723,6 +773,7 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
