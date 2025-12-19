@@ -403,10 +403,41 @@ def export_excel_multi(df):
     ws5.column_dimensions['A'].width = 25
     ws5.column_dimensions['B'].width = 20
 
+    # Sheet 6: Data Import (format sederhana untuk import ulang)
+    ws6 = wb.create_sheet("Data Import")
+    ws6.merge_cells(start_row=1, start_column=1, end_row=1, end_column=5)
+    title_cell = ws6.cell(row=1, column=1, value="Data Import - Format untuk Import Ulang")
+    title_cell.font = Font(bold=True, size=12, italic=True)
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    title_cell.fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+    
+    headers = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
+    for idx, val in enumerate(headers, start=1):
+        hcell = ws6.cell(row=2, column=idx, value=val)
+        hcell.font = font_white_bold
+        hcell.fill = header_fill
+        hcell.alignment = Alignment(horizontal="center", vertical="center")
+        hcell.border = thin_border
+    
+    r = 3
+    for _, row in df.iterrows():
+        ws6.cell(row=r, column=1, value=row["Tanggal"].strftime("%Y-%m-%d %H:%M:%S")).alignment = Alignment(horizontal="left")
+        ws6.cell(row=r, column=2, value=row["Akun"]).alignment = Alignment(horizontal="left")
+        ws6.cell(row=r, column=3, value=row["Keterangan"]).alignment = Alignment(horizontal="left")
+        ws6.cell(row=r, column=4, value=row["Debit"]).alignment = Alignment(horizontal="right")
+        ws6.cell(row=r, column=5, value=row["Kredit"]).alignment = Alignment(horizontal="right")
+        
+        for col in range(1, 6):
+            ws6.cell(row=r, column=col).border = thin_border
+        r += 1
+    
+    for i, width in enumerate(col_widths, 1):
+        ws6.column_dimensions[chr(64 + i)].width = width
+
     wb.save(output)
     output.seek(0)
     return output.getvalue()
-
+    
 # ===========================
 # Menu Navigasi Streamlit
 # ===========================
@@ -692,5 +723,6 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
