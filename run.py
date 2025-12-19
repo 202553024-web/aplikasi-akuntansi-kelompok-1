@@ -558,6 +558,16 @@ elif menu == "📈 Grafik":
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
+        
+    # Pastikan kolom ada
+    if not {"Akun", "Debit", "Kredit"}.issubset(df.columns):
+        st.error("Data transaksi tidak lengkap untuk grafik")
+        st.stop()
+        
+# Pastikan kolom numeric
+df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
+df["Kredit"] = pd.to_numeric(df["Kredit"], errors="coerce").fillna(0)
+
         tab1, tab2, tab3 = st.tabs(["📊 Debit per Akun", "📊 Kredit per Akun", "📊 Perbandingan"])
         with tab1:
             chart = alt.Chart(df).mark_bar().encode(
