@@ -558,17 +558,17 @@ elif menu == "📈 Grafik":
         st.info("Belum ada data.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        
-    # Pastikan kolom ada
-    if not {"Akun", "Debit", "Kredit"}.issubset(df.columns):
-        st.error("Data transaksi tidak lengkap untuk grafik")
-        st.stop()
-        
-# Pastikan kolom numeric
-df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
-df["Kredit"] = pd.to_numeric(df["Kredit"], errors="coerce").fillna(0)
 
-        tab1, tab2, tab3 = st.tabs(["📊 Debit per Akun", "📊 Kredit per Akun", "📊 Perbandingan"])
+        # Pastikan kolom numeric untuk chart
+        df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
+        df["Kredit"] = pd.to_numeric(df["Kredit"], errors="coerce").fillna(0)
+
+        tab1, tab2, tab3 = st.tabs([
+            "📊 Debit per Akun", 
+            "📊 Kredit per Akun", 
+            "📊 Perbandingan"
+        ])
+
         with tab1:
             chart = alt.Chart(df).mark_bar().encode(
                 x=alt.X("Akun:N", title="Akun"),
@@ -577,6 +577,7 @@ df["Kredit"] = pd.to_numeric(df["Kredit"], errors="coerce").fillna(0)
                 tooltip=["Akun", "Debit"]
             ).properties(title="Grafik Total Debit per Akun", height=400)
             st.altair_chart(chart, use_container_width=True)
+
         with tab2:
             chart = alt.Chart(df).mark_bar().encode(
                 x=alt.X("Akun:N", title="Akun"),
@@ -585,6 +586,7 @@ df["Kredit"] = pd.to_numeric(df["Kredit"], errors="coerce").fillna(0)
                 tooltip=["Akun", "Kredit"]
             ).properties(title="Grafik Total Kredit per Akun", height=400)
             st.altair_chart(chart, use_container_width=True)
+
         with tab3:
             df_grouped = df.groupby("Akun")[["Debit", "Kredit"]].sum().reset_index()
             df_melt = df_grouped.melt(id_vars="Akun", value_vars=["Debit", "Kredit"], var_name="Tipe", value_name="Jumlah")
@@ -596,6 +598,7 @@ df["Kredit"] = pd.to_numeric(df["Kredit"], errors="coerce").fillna(0)
                 tooltip=["Akun", "Tipe", "Jumlah"]
             ).properties(title="Perbandingan Debit vs Kredit per Akun", height=400)
             st.altair_chart(chart, use_container_width=True)
+
 
 # ===========================
 # Menu untuk Import Excel
@@ -683,4 +686,5 @@ elif menu == "📤 Export Excel":
                 st.success("File siap diunduh!")
             except Exception as e:
                 st.error(f"Error saat generate file Excel: {e}")
+
 
