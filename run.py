@@ -206,6 +206,9 @@ def export_excel_multi(df):
                 hcell.border = thin_border
             current_row += 1
 
+            total_debit_bulan = 0
+            total_kredit_bulan = 0
+
             for _, row in df_bulan.iterrows():
                 ws.cell(row=current_row, column=1, value=row["Tanggal"].strftime("%Y-%m-%d %H:%M:%S")).alignment = Alignment(horizontal="left")
                 ws.cell(row=current_row, column=2, value=row["Akun"]).alignment = Alignment(horizontal="left")
@@ -225,8 +228,31 @@ def export_excel_multi(df):
                 for col in range(1, 6):
                     ws.cell(row=current_row, column=col).border = thin_border
                 current_row += 1
+                
+                total_debit_bulan += row["Debit"]
+                total_kredit_bulan += row["Kredit"]
 
-            current_row += 1
+            # Tambahkan baris Total
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=3)
+            total_cell = ws.cell(row=current_row, column=1, value="Total")
+            total_cell.font = font_bold
+            total_cell.fill = title_fill
+            total_cell.alignment = Alignment(horizontal="center", vertical="center")
+            
+            debit_total_cell = ws.cell(row=current_row, column=4, value=format_rupiah_angka(total_debit_bulan))
+            debit_total_cell.font = font_bold
+            debit_total_cell.fill = title_fill
+            debit_total_cell.alignment = Alignment(horizontal="right")
+            
+            kredit_total_cell = ws.cell(row=current_row, column=5, value=format_rupiah_angka(total_kredit_bulan))
+            kredit_total_cell.font = font_bold
+            kredit_total_cell.fill = title_fill
+            kredit_total_cell.alignment = Alignment(horizontal="right")
+            
+            for col in range(1, 6):
+                ws.cell(row=current_row, column=col).border = thin_border
+            
+            current_row += 2
 
         current_row += 1
 
@@ -444,7 +470,11 @@ elif menu == "📝 Input Transaksi":
 
     with st.form("form_transaksi", clear_on_submit=True):
         tz = pytz.timezone('Asia/Jakarta')
-        tgl_input = st.date_input("📅 Tanggal Transaksi", datetime.now(tz).date())
+        col_tgl, col_tahun = st.columns([2, 1])
+        with col_tgl:
+            tgl_input = st.date_input("📅 Tanggal Transaksi", datetime.now(tz).date())
+        with col_tahun:
+            tahun_input = st.number_input("📆 Periode Tahun", min_value=2000, max_value=2100, value=datetime.now(tz).year, step=1)
         akun = st.selectbox("🏦 Pilih Akun", [
             "Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
             "Beban Gaji", "Beban Listrik", "Beban Sewa", "Beban Lainnya"])
@@ -459,7 +489,7 @@ elif menu == "📝 Input Transaksi":
                 st.error("❌ Keterangan harus diisi!")
             else:
                 waktu_device = datetime.now(tz).time()
-                tgl_waktu = datetime.combine(tgl_input, waktu_device)
+                tgl_waktu = datetime.combine(tgl_input.replace(year=tahun_input), waktu_device)
                 tambah_transaksi(tgl_waktu, akun, ket, debit, kredit)
                 st.success("✅ Transaksi berhasil ditambahkan!")
                 st.balloons()
@@ -607,15 +637,50 @@ elif menu == "📤 Export Excel":
         st.info("Belum ada transaksi untuk diexport.")
     else:
         df = pd.DataFrame(st.session_state.transaksi)
-        st.markdown(f"Total transaksi: {total_transaksi}")
-        try:
-            excel_data = export_excel_multi(df)
-            st.download_button("Download Laporan Akuntansi.xlsx", excel_data,
-                                file_name=f"laporan_akuntansi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            st.success("File siap diunduh!")
-        except Exception as e:
-            st.error(f"Error saat generate file Excel: {e}")
+        df["Tanggal"] = pd.to_datetime(df["Tanggal"])
+        df["Tahun"] = df["Tanggal"].dt.year
+        df["Bulan"] = df["Tanggal"].dt.month
+        
+        tahun_tersedia = sorted(df["Tahun"].unique().tolist())
+        
+        st.markdown("### 📅 Pilih Periode Export")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            pilihan_export = st.radio("Pilih Jenis Export:", ["Semua Periode", "Per Tahun", "Per Bulan"])
+        
+        with col2:
+            if pilihan_export == "Per Tahun":
+                tahun_pilihan = st.selectbox("Pilih Tahun:", tahun_tersedia)
+                df_filtered = df[df["Tahun"] == tahun_pilihan]
+            elif pilihan_export == "Per Bulan":
+                tahun_pilihan = st.selectbox("Pilih Tahun:", tahun_tersedia)
+                df_tahun = df[df["Tahun"] == tahun_pilihan]
+                bulan_tersedia = sorted(df_tahun["Bulan"].unique().tolist())
+                bulan_pilihan = st.selectbox("Pilih Bulan:", bulan_tersedia, format_func=lambda x: calendar.month_name[x])
+                df_filtered = df[(df["Tahun"] == tahun_pilihan) & (df["Bulan"] == bulan_pilihan)]
+            else:
+                df_filtered = df
+        
+        st.markdown(f"**Total transaksi yang akan diexport: {len(df_filtered)}**")
+        
+        if len(df_filtered) == 0:
+            st.warning("Tidak ada transaksi untuk periode yang dipilih.")
+        else:
+            try:
+                excel_data = export_excel_multi(df_filtered)
+                filename_suffix = ""
+                if pilihan_export == "Per Tahun":
+                    filename_suffix = f"_tahun_{tahun_pilihan}"
+                elif pilihan_export == "Per Bulan":
+                    filename_suffix = f"_tahun_{tahun_pilihan}_bulan_{bulan_pilihan}"
+                
+                st.download_button("Download Laporan Akuntansi.xlsx", excel_data,
+                                    file_name=f"laporan_akuntansi{filename_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                st.success("File siap diunduh!")
+            except Exception as e:
+                st.error(f"Error saat generate file Excel: {e}")
 
 # ===================
 # Footer
@@ -627,4 +692,5 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
