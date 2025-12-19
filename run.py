@@ -3,6 +3,8 @@ import pandas as pd
 import altair as alt
 import pytz
 from datetime import datetime
+import pytz
+tz_jakarta = pytz.timezone("Asia/Jakarta")
 import calendar
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -102,7 +104,14 @@ def format_tanggal(dt):
             dt = pd.to_datetime(dt)
         except:
             return dt
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Pastikan timezone WIB
+    if dt.tzinfo is None:
+        dt = tz_jakarta.localize(dt)
+    else:
+        dt = dt.astimezone(tz_jakarta)
+
+    return dt.strftime("%d/%m/%Y %H:%M:%S"
 
 # =======================
 # Fungsi-fungsi akun
@@ -437,19 +446,15 @@ elif menu == "📝 Input Transaksi":
     st.markdown("<div class='subtitle'>📝 Input Transaksi Baru</div>", unsafe_allow_html=True)
 
     with st.form("form_transaksi", clear_on_submit=True):
-        # Pengguna isi periode sendiri
-        periode = st.text_input("🗓️ Periode (YYYY-MM)", value=datetime.now().strftime("%Y-%m"))
-        try:
-            tahun_input, bulan_input = map(int, periode.split("-"))
-        except:
-            st.warning("Format periode harus YYYY-MM, misal 2025-12")
-            st.stop()
 
         # Input tanggal saja
         tanggal_input = st.date_input(
             "📅 Tanggal Transaksi",
-            value=datetime(tahun_input, bulan_input, 1).date()
+            value=datetime.now(tz_jakarta).date()
         )
+        
+        tahun_input = tanggal_input.year
+
 
         akun = st.selectbox("🏦 Pilih Akun", [
             "Kas", "Piutang", "Modal", "Pendapatan Jasa", "Pendapatan Lainnya", 
@@ -465,12 +470,14 @@ elif menu == "📝 Input Transaksi":
             elif not ket.strip():
                 st.error("❌ Keterangan harus diisi!")
             else:
-                tgl_waktu = datetime.combine(tanggal_input, datetime.now().time())
+                now_wib = datetime.now(tz_jakarta)
+                tgl_waktu = tz_jakarta.localize(
+                    datetime.combine(tanggal_input, now_wib.time())
+                )
 
                 tambah_transaksi({
                     "Tanggal": tgl_waktu,
                     "Tahun": tahun_input,
-                    "Bulan": bulan_input,
                     "Akun": akun,
                     "Keterangan": ket,
                     "Debit": int(debit),
@@ -687,6 +694,7 @@ elif menu == "📤 Export Excel":
                 st.success("File siap diunduh!")
             except Exception as e:
                 st.error(f"Error saat generate file Excel: {e}")
+
 
 
 
