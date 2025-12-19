@@ -637,27 +637,47 @@ elif menu == "📈 Grafik":
 elif menu == "📥 Import Excel":
     st.markdown("<div class='subtitle'>📥 Import Transaksi dari File Excel</div>", unsafe_allow_html=True)
     
-    st.info("💡 Tips: Anda bisa menggunakan sheet 'Data Import' dari file export, atau sheet lain yang memiliki kolom: Tanggal, Akun, Keterangan, Debit, Kredit")
+    st.info("💡 Tips: Gunakan sheet 'Data Import' atau 'Jurnal Umum' dari file export untuk import data transaksi")
     
     uploaded_file = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx"])
     if uploaded_file:
         try:
             # Baca semua sheet yang tersedia
             excel_file = pd.ExcelFile(uploaded_file)
-            sheet_names = excel_file.sheet_names
+            all_sheets = excel_file.sheet_names
             
-            # Pilih sheet
-            if len(sheet_names) > 1:
-                selected_sheet = st.selectbox("Pilih Sheet:", sheet_names, 
-                                             index=sheet_names.index("Data Import") if "Data Import" in sheet_names else 0)
-            else:
-                selected_sheet = sheet_names[0]
-            
-            df_import = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
-            
+            # Filter hanya sheet yang valid untuk import
+            valid_sheets = []
             expected_cols = ["Tanggal", "Akun", "Keterangan", "Debit", "Kredit"]
             
-            if all(col in df_import.columns for col in expected_cols):
+            for sheet in all_sheets:
+                try:
+                    df_test = pd.read_excel(uploaded_file, sheet_name=sheet, nrows=1)
+                    if all(col in df_test.columns for col in expected_cols):
+                        valid_sheets.append(sheet)
+                except:
+                    continue
+            
+            if len(valid_sheets) == 0:
+                st.error(f"❌ Tidak ada sheet yang valid untuk import!")
+                st.warning(f"📋 Sheet yang tersedia: {', '.join(all_sheets)}")
+                st.info(f"✅ Sheet harus memiliki kolom: {', '.join(expected_cols)}")
+            else:
+                # Prioritaskan "Data Import" jika ada
+                if "Data Import" in valid_sheets:
+                    default_idx = valid_sheets.index("Data Import")
+                else:
+                    default_idx = 0
+                
+                # Pilih sheet
+                if len(valid_sheets) > 1:
+                    selected_sheet = st.selectbox("📑 Pilih Sheet:", valid_sheets, index=default_idx)
+                else:
+                    selected_sheet = valid_sheets[0]
+                    st.success(f"✅ Sheet terdeteksi: **{selected_sheet}**")
+                
+                df_import = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+                
                 # Fungsi untuk parse format Rupiah ke angka
                 def parse_rupiah(value):
                     if pd.isna(value) or value == "" or value == "Rp -":
@@ -685,7 +705,7 @@ elif menu == "📥 Import Excel":
                 df_import = df_import[(df_import["Debit"] > 0) | (df_import["Kredit"] > 0)]
                 
                 if len(df_import) == 0:
-                    st.warning("⚠️ Tidak ada data transaksi valid yang ditemukan.")
+                    st.warning("⚠️ Tidak ada data transaksi valid yang ditemukan di sheet ini.")
                 else:
                     st.markdown(f"### 📋 Preview Data ({len(df_import)} transaksi)")
                     preview = df_import.copy()
@@ -694,6 +714,7 @@ elif menu == "📥 Import Excel":
                     preview["Kredit"] = preview["Kredit"].apply(format_rupiah_angka)
                     st.dataframe(preview, use_container_width=True)
                     
+                    st.markdown("---")
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.button("✅ Tambahkan Semua Transaksi", use_container_width=True):
@@ -705,9 +726,7 @@ elif menu == "📥 Import Excel":
                     with col2:
                         if st.button("❌ Batal", use_container_width=True):
                             st.rerun()
-            else:
-                st.error(f"❌ File harus memiliki kolom: {', '.join(expected_cols)}")
-                st.info(f"📋 Kolom yang ditemukan: {', '.join(df_import.columns.tolist())}")
+                            
         except Exception as e:
             st.error(f"❌ Error membaca file: {e}")
             st.info("💡 Pastikan file Excel Anda memiliki format yang benar")
@@ -773,6 +792,7 @@ st.markdown("""
     <p>Kelola keuangan bisnis Anda dengan mudah dan efisien</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
